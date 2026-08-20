@@ -12,7 +12,7 @@ export default function LoginPage({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Controle de Contratos</CardTitle>
+        <CardTitle>SGC - Sistema de Gestão Contratual</CardTitle>
         <CardDescription>Entre com seu e-mail e senha corporativos.</CardDescription>
       </CardHeader>
       <CardContent>

@@ -8,7 +8,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="flex min-h-screen">
       <aside className="hidden w-60 flex-col border-r border-border bg-card p-4 sm:flex">
-        <p className="mb-6 px-3 text-sm font-semibold leading-tight">Controle de Contratos</p>
+        <p className="mb-6 px-3 text-sm font-semibold leading-tight">SGC - Sistema de Gestão Contratual</p>
         <Nav role={profile.role} />
       </aside>
 

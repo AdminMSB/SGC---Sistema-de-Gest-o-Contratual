@@ -1,4 +1,4 @@
-# Controle de Contratos
+# SGC - Sistema de Gestão Contratual
 
 Sistema web para controlar todos os contratos da empresa (fornecedores/prestadores de serviço,
 locação e demais serviços): cadastro com upload do PDF assinado, alertas de vencimento/renovação
