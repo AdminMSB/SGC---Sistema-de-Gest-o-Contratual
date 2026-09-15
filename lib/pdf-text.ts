@@ -7,7 +7,9 @@ import 'server-only';
  */
 export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
   try {
-    const pdfParse = (await import('pdf-parse')).default;
+    // Importa o módulo interno (não o pacote "pdf-parse" em si) — o index.js do pacote tem um
+    // bloco de depuração que quebra ao rodar no ambiente serverless da Vercel.
+    const pdfParse = (await import('pdf-parse/lib/pdf-parse.js')).default;
     const data = await pdfParse(buffer);
     return data.text ?? '';
   } catch {
