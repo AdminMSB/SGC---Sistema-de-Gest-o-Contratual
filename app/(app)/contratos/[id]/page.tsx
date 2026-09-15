@@ -120,6 +120,14 @@ export default async function ContratoDetalhePage({
     fileUrl = signed?.signedUrl ?? null;
   }
 
+  let distratoFileUrl: string | null = null;
+  if (contract.distrato_file_path) {
+    const { data: signed } = await supabase.storage
+      .from('contracts')
+      .createSignedUrl(contract.distrato_file_path, 300);
+    distratoFileUrl = signed?.signedUrl ?? null;
+  }
+
   const totalPaidCents = (payments ?? [])
     .filter((payment) => payment.status === 'pago')
     .reduce((sum, payment) => sum + (payment.paid_amount_cents ?? payment.amount_cents), 0);
@@ -140,7 +148,6 @@ export default async function ContratoDetalhePage({
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold">{contract.title}</h1>
-          <p className="text-sm text-muted-foreground">{contract.counterparty}</p>
         </div>
         <div className="flex items-center gap-2">
           <ContratoForm mode="edit" contract={contract} triggerVariant="secondary" />
@@ -170,6 +177,11 @@ export default async function ContratoDetalhePage({
               {contract.counterparty_cnpj && (
                 <DetailRow label="CNPJ da contraparte" value={contract.counterparty_cnpj} />
               )}
+              {contract.representative_name && (
+                <DetailRow label="Representante" value={contract.representative_name} />
+              )}
+              {contract.contact_email && <DetailRow label="E-mail de contato" value={contract.contact_email} />}
+              {contract.contact_phone && <DetailRow label="Telefone de contato" value={contract.contact_phone} />}
               <DetailRow label="Status" value={<ContractStatusBadge status={contract.status} />} />
               <DetailRow label="Início da vigência" value={formatDate(contract.start_date)} />
               <DetailRow
@@ -200,6 +212,22 @@ export default async function ContratoDetalhePage({
                     </a>
                   ) : (
                     '—'
+                  )
+                }
+              />
+              <DetailRow
+                label="Distrato"
+                value={
+                  contract.has_distrato ? (
+                    distratoFileUrl ? (
+                      <a href={distratoFileUrl} target="_blank" rel="noreferrer" className="text-primary hover:underline">
+                        Sim — Baixar PDF
+                      </a>
+                    ) : (
+                      'Sim'
+                    )
+                  ) : (
+                    'Não'
                   )
                 }
               />

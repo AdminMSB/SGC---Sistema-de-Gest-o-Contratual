@@ -14,7 +14,7 @@ export default async function ContratosPage({
 
   const { data: contracts } = await supabase
     .from('contracts')
-    .select('id, title, counterparty, contract_type, status, end_date, amount_cents')
+    .select('id, title, contract_type, status, end_date, amount_cents')
     .order('created_at', { ascending: false });
 
   return (

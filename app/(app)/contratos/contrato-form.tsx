@@ -31,7 +31,6 @@ const PAYMENT_FREQUENCY_ENTRIES = Object.entries(PAYMENT_FREQUENCY_LABELS) as [P
 export interface ContractDefaults {
   id: string;
   title: string;
-  counterparty: string;
   contract_type: ContractType;
   contract_detail_type: ContractDetailType | null;
   start_date: string;
@@ -43,8 +42,13 @@ export interface ContractDefaults {
   counterparty_cnpj: string | null;
   readjustment_index: ReadjustmentIndex | null;
   readjustment_period_months: number | null;
+  has_distrato: boolean;
+  representative_name: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
   notes: string | null;
   file_path: string | null;
+  distrato_file_path: string | null;
 }
 
 interface ContratoFormProps {
@@ -105,8 +109,8 @@ export function ContratoForm({ mode, contract, triggerLabel, triggerVariant }: C
   const [extractionNote, setExtractionNote] = useState<string | null>(null);
   const [autoRenewal, setAutoRenewal] = useState(contract?.renewal_type === 'automatica');
   const [indeterminateTerm, setIndeterminateTerm] = useState(mode === 'edit' && !contract?.end_date);
+  const [hasDistrato, setHasDistrato] = useState(contract?.has_distrato ?? false);
   const titleRef = useRef<HTMLInputElement>(null);
-  const counterpartyRef = useRef<HTMLInputElement>(null);
   const startDateRef = useRef<HTMLInputElement>(null);
   const endDateRef = useRef<HTMLInputElement>(null);
   const amountRef = useRef<HTMLInputElement>(null);
@@ -138,9 +142,6 @@ export function ContratoForm({ mode, contract, triggerLabel, triggerVariant }: C
         return;
       }
 
-      if (suggestions.counterpartyName && counterpartyRef.current && !counterpartyRef.current.value) {
-        counterpartyRef.current.value = suggestions.counterpartyName;
-      }
       // Por convenção da empresa, o nome do contrato costuma ser o nome da contraparte.
       if (suggestions.counterpartyName && titleRef.current && !titleRef.current.value) {
         titleRef.current.value = suggestions.counterpartyName;
@@ -223,15 +224,14 @@ export function ContratoForm({ mode, contract, triggerLabel, triggerVariant }: C
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor={`counterparty-${mode}`}>Contraparte</Label>
+              <Label htmlFor={`counterpartyCnpj-${mode}`}>CNPJ da contraparte</Label>
               <Input
-                ref={counterpartyRef}
-                id={`counterparty-${mode}`}
-                name="counterparty"
+                ref={cnpjRef}
+                id={`counterpartyCnpj-${mode}`}
+                name="counterpartyCnpj"
                 type="text"
-                placeholder="Fornecedor, locador ou cliente"
-                defaultValue={contract?.counterparty ?? ''}
-                required
+                placeholder="00.000.000/0000-00"
+                defaultValue={contract?.counterparty_cnpj ?? ''}
               />
             </div>
             <div>
@@ -254,17 +254,6 @@ export function ContratoForm({ mode, contract, triggerLabel, triggerVariant }: C
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor={`counterpartyCnpj-${mode}`}>CNPJ da contraparte</Label>
-              <Input
-                ref={cnpjRef}
-                id={`counterpartyCnpj-${mode}`}
-                name="counterpartyCnpj"
-                type="text"
-                placeholder="00.000.000/0000-00"
-                defaultValue={contract?.counterparty_cnpj ?? ''}
-              />
-            </div>
-            <div>
               <Label htmlFor={`contractDetailType-${mode}`}>Detalhamento</Label>
               <Select
                 ref={contractDetailTypeRef}
@@ -279,6 +268,39 @@ export function ContratoForm({ mode, contract, triggerLabel, triggerVariant }: C
                   </option>
                 ))}
               </Select>
+            </div>
+            <div>
+              <Label htmlFor={`representativeName-${mode}`}>Nome do representante</Label>
+              <Input
+                id={`representativeName-${mode}`}
+                name="representativeName"
+                type="text"
+                placeholder="Quando constar no contrato"
+                defaultValue={contract?.representative_name ?? ''}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor={`contactEmail-${mode}`}>E-mail de contato</Label>
+              <Input
+                id={`contactEmail-${mode}`}
+                name="contactEmail"
+                type="email"
+                placeholder="contato@empresa.com"
+                defaultValue={contract?.contact_email ?? ''}
+              />
+            </div>
+            <div>
+              <Label htmlFor={`contactPhone-${mode}`}>Telefone de contato</Label>
+              <Input
+                id={`contactPhone-${mode}`}
+                name="contactPhone"
+                type="text"
+                placeholder="(00) 00000-0000"
+                defaultValue={contract?.contact_phone ?? ''}
+              />
             </div>
           </div>
 
@@ -420,6 +442,28 @@ export function ContratoForm({ mode, contract, triggerLabel, triggerVariant }: C
               <p className="mt-1 text-xs text-muted-foreground">{extractionNote}</p>
             )}
           </div>
+
+          <div className="border-t border-border pt-4">
+            <CheckboxField
+              id={`hasDistrato-${mode}`}
+              label="Contrato com distrato"
+              checked={hasDistrato}
+              onChange={setHasDistrato}
+            />
+          </div>
+
+          {hasDistrato && (
+            <div>
+              <Label htmlFor={`distratoFile-${mode}`}>Documento do distrato (PDF)</Label>
+              <Input id={`distratoFile-${mode}`} name="distratoFile" type="file" accept="application/pdf" />
+              <p className="mt-1 text-xs text-muted-foreground">
+                PDF, até 10MB.
+                {mode === 'edit' && contract?.distrato_file_path
+                  ? ' Envie um novo arquivo para substituir o atual.'
+                  : ''}
+              </p>
+            </div>
+          )}
 
           <div className="flex justify-end gap-2">
             <Button type="button" variant="secondary" onClick={() => setOpen(false)}>

@@ -49,6 +49,11 @@ export interface Database {
           counterparty_cnpj: string | null;
           readjustment_index: ReadjustmentIndex | null;
           readjustment_period_months: number | null;
+          has_distrato: boolean;
+          distrato_file_path: string | null;
+          representative_name: string | null;
+          contact_email: string | null;
+          contact_phone: string | null;
           file_path: string | null;
           notes: string | null;
           extracted_highlights: ExtractedHighlights | null;
@@ -72,6 +77,11 @@ export interface Database {
           counterparty_cnpj?: string | null;
           readjustment_index?: ReadjustmentIndex | null;
           readjustment_period_months?: number | null;
+          has_distrato?: boolean;
+          distrato_file_path?: string | null;
+          representative_name?: string | null;
+          contact_email?: string | null;
+          contact_phone?: string | null;
           file_path?: string | null;
           notes?: string | null;
           extracted_highlights?: ExtractedHighlights | null;

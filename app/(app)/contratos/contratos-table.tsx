@@ -18,7 +18,6 @@ import {
 export interface ContractListItem {
   id: string;
   title: string;
-  counterparty: string;
   contract_type: ContractType;
   status: ContractStatus;
   end_date: string | null;
@@ -39,7 +38,7 @@ export function ContratosTable({ rows }: { rows: ContractListItem[] }) {
       if (status && row.status !== status) return false;
       if (type && row.contract_type !== type) return false;
       if (!query) return true;
-      return `${row.title} ${row.counterparty}`.toLowerCase().includes(query);
+      return row.title.toLowerCase().includes(query);
     });
   }, [rows, search, status, type]);
 
@@ -51,7 +50,7 @@ export function ContratosTable({ rows }: { rows: ContractListItem[] }) {
           <Input
             id="contratos-filtro-busca"
             type="search"
-            placeholder="Nome do contrato ou contraparte..."
+            placeholder="Nome do contrato..."
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />
@@ -92,8 +91,7 @@ export function ContratosTable({ rows }: { rows: ContractListItem[] }) {
         <TableHeader>
           <TableRow>
             <TableHead>Contrato</TableHead>
-            <TableHead>Contraparte</TableHead>
-            <TableHead>Tipo</TableHead>
+            <TableHead>Categoria</TableHead>
             <TableHead>Fim da vigência</TableHead>
             <TableHead>Valor</TableHead>
             <TableHead>Status</TableHead>
@@ -107,7 +105,6 @@ export function ContratosTable({ rows }: { rows: ContractListItem[] }) {
                   {row.title}
                 </Link>
               </TableCell>
-              <TableCell>{row.counterparty}</TableCell>
               <TableCell>{CONTRACT_TYPE_LABELS[row.contract_type]}</TableCell>
               <TableCell>{row.end_date ? formatDate(row.end_date) : 'Indeterminado'}</TableCell>
               <TableCell>{formatCurrencyCents(row.amount_cents)}</TableCell>
@@ -118,7 +115,7 @@ export function ContratosTable({ rows }: { rows: ContractListItem[] }) {
           ))}
           {filteredRows.length === 0 && (
             <TableRow>
-              <TableCell colSpan={6} className="text-center text-muted-foreground">
+              <TableCell colSpan={5} className="text-center text-muted-foreground">
                 {rows.length === 0 ? 'Nenhum contrato cadastrado ainda.' : 'Nenhum contrato encontrado para esse filtro.'}
               </TableCell>
             </TableRow>

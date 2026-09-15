@@ -46,7 +46,7 @@ export default async function DashboardPage() {
       .lt('due_date', todayISO),
     supabase
       .from('contracts_expiring')
-      .select('id, title, counterparty, contract_type, end_date, days_until_expiration')
+      .select('id, title, contract_type, end_date, days_until_expiration')
       .order('end_date', { ascending: true }),
   ]);
 
@@ -89,7 +89,7 @@ export default async function DashboardPage() {
                       {contract.title}
                     </Link>
                     <p className="text-sm text-muted-foreground">
-                      {contract.counterparty} · {CONTRACT_TYPE_LABELS[contract.contract_type]}
+                      {CONTRACT_TYPE_LABELS[contract.contract_type]}
                     </p>
                   </div>
                   <div className="text-right">

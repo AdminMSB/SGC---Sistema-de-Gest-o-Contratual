@@ -15,7 +15,6 @@ const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
 
 const contractSchema = z.object({
   title: z.string().trim().min(1, 'Informe o nome/objeto do contrato.'),
-  counterparty: z.string().trim().min(1, 'Informe a contraparte (fornecedor/locador/cliente).'),
   counterpartyCnpj: z.string(),
   contractType: z.enum(['servico', 'locacao', 'fornecimento', 'comodato', 'consultoria']),
   contractDetailType: z.enum([
@@ -39,6 +38,10 @@ const contractSchema = z.object({
   amount: z.string().min(1, 'Informe o valor do contrato.'),
   readjustmentIndex: z.enum(['igpm', 'ipca', 'inpc', 'outro', '']),
   readjustmentPeriodMonths: z.string(),
+  hasDistrato: z.string(),
+  representativeName: z.string(),
+  contactEmail: z.string(),
+  contactPhone: z.string(),
   notes: z.string(),
 });
 
@@ -49,7 +52,6 @@ function fail(message: string): never {
 function parseContractFields(formData: FormData) {
   const parsed = contractSchema.safeParse({
     title: String(formData.get('title') ?? ''),
-    counterparty: String(formData.get('counterparty') ?? ''),
     counterpartyCnpj: String(formData.get('counterpartyCnpj') ?? ''),
     contractType: String(formData.get('contractType') ?? ''),
     contractDetailType: String(formData.get('contractDetailType') ?? ''),
@@ -61,6 +63,10 @@ function parseContractFields(formData: FormData) {
     amount: String(formData.get('amount') ?? ''),
     readjustmentIndex: String(formData.get('readjustmentIndex') ?? ''),
     readjustmentPeriodMonths: String(formData.get('readjustmentPeriodMonths') ?? ''),
+    hasDistrato: String(formData.get('hasDistrato') ?? ''),
+    representativeName: String(formData.get('representativeName') ?? ''),
+    contactEmail: String(formData.get('contactEmail') ?? ''),
+    contactPhone: String(formData.get('contactPhone') ?? ''),
     notes: String(formData.get('notes') ?? ''),
   });
 
@@ -81,6 +87,11 @@ function parseContractFields(formData: FormData) {
   const renewalNoticeDays = Number.parseInt(parsed.data.renewalNoticeDays, 10);
   const readjustmentPeriodMonths = Number.parseInt(parsed.data.readjustmentPeriodMonths, 10);
 
+  const contactEmail = parsed.data.contactEmail.trim();
+  if (contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) {
+    fail('Informe um e-mail de contato válido.');
+  }
+
   return {
     ...parsed.data,
     endDate,
@@ -91,19 +102,23 @@ function parseContractFields(formData: FormData) {
     readjustmentPeriodMonths:
       Number.isFinite(readjustmentPeriodMonths) && readjustmentPeriodMonths >= 0 ? readjustmentPeriodMonths : null,
     counterpartyCnpj: parsed.data.counterpartyCnpj.trim() || null,
+    hasDistrato: parsed.data.hasDistrato === 'on',
+    representativeName: parsed.data.representativeName.trim() || null,
+    contactEmail: contactEmail || null,
+    contactPhone: parsed.data.contactPhone.trim() || null,
   };
 }
 
-function extractContractFile(formData: FormData): File | null {
-  const entry = formData.get('file');
+function extractPdfFile(formData: FormData, fieldName: string, errorLabel: string): File | null {
+  const entry = formData.get(fieldName);
   const file = entry instanceof File && entry.size > 0 ? entry : null;
   if (!file) return null;
 
   if (!ACCEPTED_FILE_TYPES.includes(file.type)) {
-    fail('O arquivo do contrato deve ser um PDF.');
+    fail(`O arquivo ${errorLabel} deve ser um PDF.`);
   }
   if (file.size > MAX_FILE_SIZE_BYTES) {
-    fail('O arquivo do contrato deve ter no máximo 10MB.');
+    fail(`O arquivo ${errorLabel} deve ter no máximo 10MB.`);
   }
 
   return file;
@@ -119,13 +134,14 @@ export async function createContract(formData: FormData) {
   const supabase = await createServerSupabaseClient();
 
   const fields = parseContractFields(formData);
-  const file = extractContractFile(formData);
+  const file = extractPdfFile(formData, 'file', 'do contrato');
+  const distratoFile = extractPdfFile(formData, 'distratoFile', 'do distrato');
 
   const { data: inserted, error: insertError } = await supabase
     .from('contracts')
     .insert({
       title: fields.title,
-      counterparty: fields.counterparty,
+      counterparty: fields.title,
       counterparty_cnpj: fields.counterpartyCnpj,
       contract_type: fields.contractType,
       contract_detail_type: fields.contractDetailType,
@@ -137,6 +153,10 @@ export async function createContract(formData: FormData) {
       amount_cents: fields.amountCents,
       readjustment_index: fields.readjustmentIndex,
       readjustment_period_months: fields.readjustmentPeriodMonths,
+      has_distrato: fields.hasDistrato,
+      representative_name: fields.representativeName,
+      contact_email: fields.contactEmail,
+      contact_phone: fields.contactPhone,
       notes: fields.notes || null,
       created_by: profile.id,
     })
@@ -182,6 +202,18 @@ export async function createContract(formData: FormData) {
     }
   }
 
+  if (distratoFile) {
+    const extension = distratoFile.name.includes('.') ? distratoFile.name.split('.').pop() : 'pdf';
+    const path = `${inserted.id}/distrato.${extension}`;
+    const { error: uploadError } = await supabase.storage.from('contracts').upload(path, distratoFile, {
+      contentType: distratoFile.type,
+      upsert: true,
+    });
+    if (!uploadError) {
+      await supabase.from('contracts').update({ distrato_file_path: path }).eq('id', inserted.id);
+    }
+  }
+
   revalidatePath('/contratos');
   redirect(`/contratos/${inserted.id}`);
 }
@@ -194,9 +226,14 @@ export async function updateContract(formData: FormData) {
   if (!id) fail('Contrato inválido.');
 
   const fields = parseContractFields(formData);
-  const file = extractContractFile(formData);
+  const file = extractPdfFile(formData, 'file', 'do contrato');
+  const distratoFile = extractPdfFile(formData, 'distratoFile', 'do distrato');
 
-  const { data: existing } = await supabase.from('contracts').select('id, file_path').eq('id', id).single();
+  const { data: existing } = await supabase
+    .from('contracts')
+    .select('id, file_path, distrato_file_path')
+    .eq('id', id)
+    .single();
   if (!existing) fail('Contrato não encontrado.');
 
   let filePath = existing.file_path;
@@ -216,11 +253,23 @@ export async function updateContract(formData: FormData) {
     extractedHighlights = highlights;
   }
 
+  let distratoFilePath = existing.distrato_file_path;
+  if (distratoFile) {
+    const extension = distratoFile.name.includes('.') ? distratoFile.name.split('.').pop() : 'pdf';
+    const path = `${id}/distrato.${extension}`;
+    const { error: uploadError } = await supabase.storage.from('contracts').upload(path, distratoFile, {
+      contentType: distratoFile.type,
+      upsert: true,
+    });
+    if (uploadError) fail('Não foi possível enviar o arquivo do distrato.');
+    distratoFilePath = path;
+  }
+
   const { error: updateError } = await supabase
     .from('contracts')
     .update({
       title: fields.title,
-      counterparty: fields.counterparty,
+      counterparty: fields.title,
       counterparty_cnpj: fields.counterpartyCnpj,
       contract_type: fields.contractType,
       contract_detail_type: fields.contractDetailType,
@@ -232,9 +281,14 @@ export async function updateContract(formData: FormData) {
       amount_cents: fields.amountCents,
       readjustment_index: fields.readjustmentIndex,
       readjustment_period_months: fields.readjustmentPeriodMonths,
+      has_distrato: fields.hasDistrato,
+      representative_name: fields.representativeName,
+      contact_email: fields.contactEmail,
+      contact_phone: fields.contactPhone,
       ...(file ? { extracted_highlights: extractedHighlights } : {}),
       notes: fields.notes || null,
       file_path: filePath,
+      distrato_file_path: distratoFilePath,
     })
     .eq('id', id);
 
