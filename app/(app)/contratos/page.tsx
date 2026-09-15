@@ -12,10 +12,13 @@ export default async function ContratosPage({
   await requireProfile();
   const supabase = await createServerSupabaseClient();
 
-  const { data: contracts } = await supabase
-    .from('contracts')
-    .select('id, title, contract_type, status, end_date, amount_cents')
-    .order('created_at', { ascending: false });
+  const [{ data: contracts }, { data: managers }] = await Promise.all([
+    supabase
+      .from('contracts')
+      .select('id, title, contract_type, status, end_date, total_amount_cents')
+      .order('created_at', { ascending: false }),
+    supabase.from('profiles').select('id, full_name').order('full_name'),
+  ]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -26,7 +29,7 @@ export default async function ContratosPage({
             Fornecedores/prestadores de serviço, locação e demais contratos da empresa.
           </p>
         </div>
-        <ContratoForm mode="create" />
+        <ContratoForm mode="create" managers={managers ?? []} />
       </div>
 
       {searchParams.error && <p className="text-sm text-destructive">{searchParams.error}</p>}

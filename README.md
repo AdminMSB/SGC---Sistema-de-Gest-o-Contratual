@@ -1,27 +1,30 @@
 # SGC - Sistema de Gestão Contratual
 
-Sistema web para controlar todos os contratos da empresa (fornecedores/prestadores de serviço,
-locação e demais serviços): cadastro com upload do PDF assinado, alertas de vencimento/renovação
-e controle de valores/pagamentos.
+Sistema web para gestão do ciclo de vida completo dos contratos da empresa (fornecedores/
+prestadores de serviço, locação e demais serviços): cadastro com upload do PDF assinado,
+extração automática de destaques do documento, aditivos, distrato, alertas de vencimento/
+renovação e histórico de status. Não há controle de pagamentos/parcelas — isso é tratado em
+outro sistema.
 
 ## Stack
 
 - **Next.js 14** (App Router) + **TypeScript** — front-end e back-end (Server Actions) em um
   único projeto.
-- **Supabase**: Postgres (banco relacional), Auth (login), Storage (PDF dos contratos).
-  Autorização é aplicada via **Row Level Security** no Postgres, não apenas na aplicação.
+- **Supabase**: Postgres (banco relacional), Auth (login), Storage (PDF dos contratos, aditivos
+  e distratos). Autorização é aplicada via **Row Level Security** no Postgres, não apenas na
+  aplicação.
 - **Tailwind CSS** com componentes de UI próprios (sem dependência de biblioteca externa de
   componentes).
-- **date-fns** para o cálculo do cronograma de pagamentos (parcelas mensais/trimestrais/
-  semestrais/anuais).
-- Testes: **Vitest** (geração do cronograma de pagamentos).
+- **pdf-parse** para extrair o texto do PDF e reconhecer datas, valores, CNPJ, categoria e
+  cláusulas notáveis por padrões de texto (regex, sem IA) — ver `lib/pdf-extract.ts`.
+- Testes: **Vitest** (extração de destaques do PDF).
 - Deploy: **Vercel** (aplicação) + **Supabase** (banco/auth/storage).
 
 ## Perfis de acesso
 
 | Perfil | Pode fazer |
 |---|---|
-| `membro` | Cadastrar, editar e acompanhar contratos e pagamentos |
+| `membro` | Cadastrar, editar e acompanhar contratos, aditivos e distratos |
 | `admin` | Tudo do membro + excluir contratos + gerenciar usuários e papéis |
 
 Sem fluxo de aprovação — é uma ferramenta interna para manter o controle centralizado dos
@@ -38,7 +41,7 @@ contratos, não um workflow de compras.
    - **Via Supabase CLI** (recomendado): `npx supabase login`, `npx supabase link --project-ref <seu-project-ref>`,
      depois `npx supabase db push`. Isso aplica tudo em `supabase/migrations/*.sql` em ordem.
    - **Via SQL Editor do painel Supabase**: cole o conteúdo de cada arquivo em
-     `supabase/migrations/` na ordem numérica (0001, 0002, 0003, 0004) e execute.
+     `supabase/migrations/` na ordem numérica e execute.
 5. (Opcional) Popule dados de exemplo (contratos com vencimentos próximos, para ver os alertas
    funcionando) executando `supabase/seed.sql` no SQL Editor.
 6. Crie o primeiro usuário **admin**: no painel Supabase, vá em **Authentication → Users → Add
@@ -85,37 +88,43 @@ app/
   (auth)/login/              — tela de login
   (app)/dashboard/           — indicadores e alertas de vencimento
   (app)/contratos/           — lista, cadastro/edição, upload do PDF
-  (app)/contratos/[id]/      — detalhe: dados do contrato, status, cronograma de pagamentos
+  (app)/contratos/[id]/      — detalhe: dados do contrato, aditivos, histórico de status
   (app)/configuracoes/usuarios/ — gestão de usuários e papéis (admin)
+  api/extract-pdf/           — preview da extração de destaques do PDF (usado pelo formulário)
 lib/
   supabase/                  — clients Supabase (server, browser, admin)
-  contracts.ts               — geração do cronograma de pagamentos (testável isoladamente)
+  pdf-extract.ts             — extração de destaques do PDF por padrões de texto (testável)
+  pdf-text.ts                — leitura do texto bruto do PDF (pdf-parse)
   auth.ts, format.ts, utils.ts
 components/
   ui/                        — componentes de interface reutilizáveis
 supabase/
   migrations/                — schema SQL, funções, RLS, storage (versionado)
   seed.sql                   — dados de exemplo
-tests/                       — Vitest (geração do cronograma de pagamentos)
+tests/                       — Vitest (extração de destaques do PDF)
 ```
 
-## Como funciona o cronograma de pagamentos
+## Extração automática de destaques do PDF
 
-Ao cadastrar um contrato, as parcelas de `contract_payments` são geradas automaticamente a
-partir de início/fim da vigência e da frequência de pagamento (`lib/contracts.ts`):
+Ao escolher o arquivo do contrato no formulário, o sistema lê o texto do PDF e tenta preencher
+automaticamente (sem IA — por padrões de texto/regex, ver `lib/pdf-extract.ts`): nome/contraparte,
+CNPJ, início/fim da vigência (aceita prazo em dias, meses ou anos), valor, categoria,
+detalhamento e índice/período de reajuste. Os destaques também ficam salvos em
+`contracts.extracted_highlights` e aparecem na tela de detalhe para consulta — sempre confira
+contra o documento original, é uma conveniência, não uma leitura jurídica.
 
-- **Mensal/trimestral/semestral/anual**: uma parcela a cada intervalo, do início ao fim da
-  vigência.
-- **Pagamento único**: uma parcela só, na data de início.
-- **Outro** ou contrato **sem data de término** (prazo indeterminado): nenhuma parcela é gerada
-  automaticamente — lance as parcelas manualmente na tela do contrato.
+## Aditivos e distrato
 
-Editar um contrato já criado **não** regenera o cronograma (evita apagar pagamentos já
-confirmados); ajuste as parcelas manualmente na tela de detalhe quando necessário.
+- **Aditivos**: histórico de alterações/prorrogações formalizadas após a assinatura original,
+  cada um com data, descrição e PDF opcional (`contract_amendments`).
+- **Distrato**: flag "Contrato com distrato" + upload do documento de distrato, independente do
+  PDF do contrato original.
 
-Uma parcela pendente com vencimento no passado aparece como "Atrasado" automaticamente (não é
-um status gravado no banco, é calculado na exibição — `paymentEffectiveStatus` em
-`lib/contracts.ts`).
+## Histórico de status
+
+Toda mudança de status (`ativo`/`encerrado`/`cancelado`) é registrada automaticamente em
+`contract_status_history` por um trigger no Postgres (não pela aplicação), com quem mudou e
+quando — visível na tela de detalhe do contrato.
 
 ## Alertas de vencimento/renovação
 
@@ -123,11 +132,14 @@ O dashboard lista os contratos ativos cujo fim de vigência está dentro do praz
 configurado em cada contrato (campo "Avisar com quantos dias de antecedência"). Isso é resolvido
 por uma view no Postgres (`contracts_expiring`), sem necessidade de um job agendado.
 
+O campo "E-mails para alerta de vencimento/renovação" apenas armazena a lista de destinatários;
+o envio automático de e-mail não está implementado (poderia ser feito via Supabase Edge
+Functions + `pg_cron`, se necessário).
+
 ## Limitações conhecidas / próximos passos
 
 - Não há testes end-to-end (E2E) automatizados — a validação da interface deve ser feita
   manualmente contra um projeto Supabase de desenvolvimento.
-- Não há notificação por e-mail para os alertas de vencimento (hoje são só visuais, no
-  dashboard) — pode ser adicionado via Supabase Edge Functions + `pg_cron`, se necessário.
-- O valor "mensal comprometido" do dashboard soma apenas contratos com frequência de pagamento
-  mensal; contratos anuais/trimestrais não são normalizados para um equivalente mensal.
+- Não há envio automático de e-mail para os alertas de vencimento nem para a lista de
+  "E-mails para alerta" (hoje são só visuais, no dashboard/detalhe do contrato).
+- Não há controle de pagamentos/parcelas neste sistema — é tratado em outro sistema da empresa.

@@ -10,11 +10,9 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   CONTRACT_DETAIL_TYPE_LABELS,
   CONTRACT_TYPE_LABELS,
-  PAYMENT_FREQUENCY_LABELS,
   READJUSTMENT_INDEX_LABELS,
   type ContractDetailType,
   type ContractType,
-  type PaymentFrequency,
   type ReadjustmentIndex,
   type RenewalType,
 } from '@/types/domain';
@@ -26,7 +24,11 @@ const CONTRACT_DETAIL_TYPE_ENTRIES = Object.entries(CONTRACT_DETAIL_TYPE_LABELS)
   string,
 ][];
 const READJUSTMENT_INDEX_ENTRIES = Object.entries(READJUSTMENT_INDEX_LABELS) as [ReadjustmentIndex, string][];
-const PAYMENT_FREQUENCY_ENTRIES = Object.entries(PAYMENT_FREQUENCY_LABELS) as [PaymentFrequency, string][];
+
+export interface ManagerOption {
+  id: string;
+  full_name: string;
+}
 
 export interface ContractDefaults {
   id: string;
@@ -37,8 +39,7 @@ export interface ContractDefaults {
   end_date: string | null;
   renewal_type: RenewalType;
   renewal_notice_days: number;
-  payment_frequency: PaymentFrequency;
-  amount_cents: number;
+  total_amount_cents: number;
   counterparty_cnpj: string | null;
   readjustment_index: ReadjustmentIndex | null;
   readjustment_period_months: number | null;
@@ -46,6 +47,15 @@ export interface ContractDefaults {
   representative_name: string | null;
   contact_email: string | null;
   contact_phone: string | null;
+  internal_code: string | null;
+  department: string | null;
+  internal_manager_id: string | null;
+  signature_date: string | null;
+  termination_reason: string | null;
+  jurisdiction_forum: string | null;
+  confidentiality_period_months: number | null;
+  approved_by: string | null;
+  alert_emails: string | null;
   notes: string | null;
   file_path: string | null;
   distrato_file_path: string | null;
@@ -54,6 +64,7 @@ export interface ContractDefaults {
 interface ContratoFormProps {
   mode: 'create' | 'edit';
   contract?: ContractDefaults;
+  managers: ManagerOption[];
   triggerLabel?: string;
   triggerVariant?: ButtonProps['variant'];
 }
@@ -103,7 +114,7 @@ interface ExtractPdfResponse {
   highlights: { clauses: string[] } | null;
 }
 
-export function ContratoForm({ mode, contract, triggerLabel, triggerVariant }: ContratoFormProps) {
+export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVariant }: ContratoFormProps) {
   const [open, setOpen] = useState(false);
   const [extracting, setExtracting] = useState(false);
   const [extractionNote, setExtractionNote] = useState<string | null>(null);
@@ -224,6 +235,44 @@ export function ContratoForm({ mode, contract, triggerLabel, triggerVariant }: C
 
           <div className="grid grid-cols-2 gap-4">
             <div>
+              <Label htmlFor={`internalCode-${mode}`}>Número/código interno</Label>
+              <Input
+                id={`internalCode-${mode}`}
+                name="internalCode"
+                type="text"
+                placeholder="Ex.: CTR-2026-014"
+                defaultValue={contract?.internal_code ?? ''}
+              />
+            </div>
+            <div>
+              <Label htmlFor={`department-${mode}`}>Departamento/centro de custo</Label>
+              <Input
+                id={`department-${mode}`}
+                name="department"
+                type="text"
+                placeholder="Ex.: Engenharia"
+                defaultValue={contract?.department ?? ''}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor={`internalManagerId-${mode}`}>Gestor interno</Label>
+              <Select
+                id={`internalManagerId-${mode}`}
+                name="internalManagerId"
+                defaultValue={contract?.internal_manager_id ?? ''}
+              >
+                <option value="">Não definido</option>
+                {managers.map((manager) => (
+                  <option key={manager.id} value={manager.id}>
+                    {manager.full_name}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div>
               <Label htmlFor={`counterpartyCnpj-${mode}`}>CNPJ da contraparte</Label>
               <Input
                 ref={cnpjRef}
@@ -234,6 +283,9 @@ export function ContratoForm({ mode, contract, triggerLabel, triggerVariant }: C
                 defaultValue={contract?.counterparty_cnpj ?? ''}
               />
             </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor={`contractType-${mode}`}>Categoria</Label>
               <Select
@@ -250,9 +302,6 @@ export function ContratoForm({ mode, contract, triggerLabel, triggerVariant }: C
                 ))}
               </Select>
             </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor={`contractDetailType-${mode}`}>Detalhamento</Label>
               <Select
@@ -269,6 +318,9 @@ export function ContratoForm({ mode, contract, triggerLabel, triggerVariant }: C
                 ))}
               </Select>
             </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor={`representativeName-${mode}`}>Nome do representante</Label>
               <Input
@@ -277,6 +329,16 @@ export function ContratoForm({ mode, contract, triggerLabel, triggerVariant }: C
                 type="text"
                 placeholder="Quando constar no contrato"
                 defaultValue={contract?.representative_name ?? ''}
+              />
+            </div>
+            <div>
+              <Label htmlFor={`jurisdictionForum-${mode}`}>Foro de eleição</Label>
+              <Input
+                id={`jurisdictionForum-${mode}`}
+                name="jurisdictionForum"
+                type="text"
+                placeholder="Ex.: Comarca de São Paulo"
+                defaultValue={contract?.jurisdiction_forum ?? ''}
               />
             </div>
           </div>
@@ -304,7 +366,31 @@ export function ContratoForm({ mode, contract, triggerLabel, triggerVariant }: C
             </div>
           </div>
 
+          <div>
+            <Label htmlFor={`alertEmails-${mode}`}>E-mails para alerta de vencimento/renovação</Label>
+            <Input
+              id={`alertEmails-${mode}`}
+              name="alertEmails"
+              type="text"
+              placeholder="fulano@msbbrasil.com, ciclana@msbbrasil.com"
+              defaultValue={contract?.alert_emails ?? ''}
+            />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Separe múltiplos e-mails por vírgula. Fica registrado aqui; o envio automático não
+              está implementado ainda.
+            </p>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor={`signatureDate-${mode}`}>Data de assinatura</Label>
+              <Input
+                id={`signatureDate-${mode}`}
+                name="signatureDate"
+                type="date"
+                defaultValue={contract?.signature_date?.slice(0, 10) ?? ''}
+              />
+            </div>
             <div>
               <Label htmlFor={`startDate-${mode}`}>Início da vigência</Label>
               <Input
@@ -316,6 +402,9 @@ export function ContratoForm({ mode, contract, triggerLabel, triggerVariant }: C
                 required
               />
             </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor={`endDate-${mode}`}>Fim da vigência</Label>
               <Input
@@ -325,6 +414,17 @@ export function ContratoForm({ mode, contract, triggerLabel, triggerVariant }: C
                 type="date"
                 defaultValue={contract?.end_date?.slice(0, 10) ?? ''}
                 disabled={indeterminateTerm}
+              />
+            </div>
+            <div>
+              <Label htmlFor={`renewalNoticeDays-${mode}`}>Avisar com quantos dias de antecedência</Label>
+              <Input
+                id={`renewalNoticeDays-${mode}`}
+                name="renewalNoticeDays"
+                type="number"
+                min={0}
+                defaultValue={contract?.renewal_notice_days ?? 30}
+                required
               />
             </div>
           </div>
@@ -344,37 +444,8 @@ export function ContratoForm({ mode, contract, triggerLabel, triggerVariant }: C
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor={`renewalNoticeDays-${mode}`}>Avisar com quantos dias de antecedência</Label>
-              <Input
-                id={`renewalNoticeDays-${mode}`}
-                name="renewalNoticeDays"
-                type="number"
-                min={0}
-                defaultValue={contract?.renewal_notice_days ?? 30}
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor={`paymentFrequency-${mode}`}>Frequência de pagamento</Label>
-              <Select
-                id={`paymentFrequency-${mode}`}
-                name="paymentFrequency"
-                defaultValue={contract?.payment_frequency ?? 'mensal'}
-                required
-              >
-                {PAYMENT_FREQUENCY_ENTRIES.map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </Select>
-            </div>
-          </div>
-
           <div>
-            <Label htmlFor={`amount-${mode}`}>Valor da parcela</Label>
+            <Label htmlFor={`amount-${mode}`}>Valor total do contrato</Label>
             <Input
               ref={amountRef}
               id={`amount-${mode}`}
@@ -382,15 +453,9 @@ export function ContratoForm({ mode, contract, triggerLabel, triggerVariant }: C
               type="text"
               inputMode="decimal"
               placeholder="0,00"
-              defaultValue={centsToAmountText(contract?.amount_cents)}
+              defaultValue={centsToAmountText(contract?.total_amount_cents)}
               required
             />
-            {mode === 'create' && (
-              <p className="mt-1 text-xs text-muted-foreground">
-                O cronograma de pagamentos é gerado automaticamente a partir da vigência e da frequência
-                (pagamento único ou sem data de término gera só uma parcela / nenhuma parcela automática).
-              </p>
-            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -422,6 +487,41 @@ export function ContratoForm({ mode, contract, triggerLabel, triggerVariant }: C
                 defaultValue={contract?.readjustment_period_months ?? ''}
               />
             </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor={`confidentialityPeriodMonths-${mode}`}>Sigilo pós-encerramento (meses)</Label>
+              <Input
+                id={`confidentialityPeriodMonths-${mode}`}
+                name="confidentialityPeriodMonths"
+                type="number"
+                min={0}
+                placeholder="Ex.: 24"
+                defaultValue={contract?.confidentiality_period_months ?? ''}
+              />
+            </div>
+            <div>
+              <Label htmlFor={`approvedBy-${mode}`}>Aprovado por</Label>
+              <Input
+                id={`approvedBy-${mode}`}
+                name="approvedBy"
+                type="text"
+                placeholder="Nome e cargo/alçada"
+                defaultValue={contract?.approved_by ?? ''}
+              />
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor={`terminationReason-${mode}`}>Motivo de encerramento/rescisão</Label>
+            <Textarea
+              id={`terminationReason-${mode}`}
+              name="terminationReason"
+              defaultValue={contract?.termination_reason ?? ''}
+              rows={2}
+              placeholder="Preencha quando o contrato terminar antes do previsto ou não for renovado."
+            />
           </div>
 
           <div>

@@ -5,8 +5,6 @@ import type {
   ContractDetailType,
   ContractStatus,
   ContractType,
-  PaymentFrequency,
-  PaymentStatus,
   ReadjustmentIndex,
   RenewalType,
   Role,
@@ -44,8 +42,7 @@ export interface Database {
           end_date: string | null;
           renewal_type: RenewalType;
           renewal_notice_days: number;
-          payment_frequency: PaymentFrequency;
-          amount_cents: number;
+          total_amount_cents: number;
           counterparty_cnpj: string | null;
           readjustment_index: ReadjustmentIndex | null;
           readjustment_period_months: number | null;
@@ -54,6 +51,15 @@ export interface Database {
           representative_name: string | null;
           contact_email: string | null;
           contact_phone: string | null;
+          internal_code: string | null;
+          department: string | null;
+          internal_manager_id: string | null;
+          signature_date: string | null;
+          termination_reason: string | null;
+          jurisdiction_forum: string | null;
+          confidentiality_period_months: number | null;
+          approved_by: string | null;
+          alert_emails: string | null;
           file_path: string | null;
           notes: string | null;
           extracted_highlights: ExtractedHighlights | null;
@@ -72,8 +78,7 @@ export interface Database {
           end_date?: string | null;
           renewal_type?: RenewalType;
           renewal_notice_days?: number;
-          payment_frequency?: PaymentFrequency;
-          amount_cents: number;
+          total_amount_cents: number;
           counterparty_cnpj?: string | null;
           readjustment_index?: ReadjustmentIndex | null;
           readjustment_period_months?: number | null;
@@ -82,6 +87,15 @@ export interface Database {
           representative_name?: string | null;
           contact_email?: string | null;
           contact_phone?: string | null;
+          internal_code?: string | null;
+          department?: string | null;
+          internal_manager_id?: string | null;
+          signature_date?: string | null;
+          termination_reason?: string | null;
+          jurisdiction_forum?: string | null;
+          confidentiality_period_months?: number | null;
+          approved_by?: string | null;
+          alert_emails?: string | null;
           file_path?: string | null;
           notes?: string | null;
           extracted_highlights?: ExtractedHighlights | null;
@@ -92,30 +106,46 @@ export interface Database {
         Update: Partial<Database['public']['Tables']['contracts']['Insert']>;
         Relationships: [];
       };
-      contract_payments: {
+      contract_amendments: {
         Row: {
           id: string;
           contract_id: string;
-          due_date: string;
-          amount_cents: number;
-          status: PaymentStatus;
-          paid_at: string | null;
-          paid_amount_cents: number | null;
-          notes: string | null;
+          description: string;
+          amendment_date: string;
+          file_path: string | null;
+          created_by: string | null;
           created_at: string;
         };
         Insert: {
           id?: string;
           contract_id: string;
-          due_date: string;
-          amount_cents: number;
-          status?: PaymentStatus;
-          paid_at?: string | null;
-          paid_amount_cents?: number | null;
-          notes?: string | null;
+          description: string;
+          amendment_date: string;
+          file_path?: string | null;
+          created_by?: string | null;
           created_at?: string;
         };
-        Update: Partial<Database['public']['Tables']['contract_payments']['Insert']>;
+        Update: Partial<Database['public']['Tables']['contract_amendments']['Insert']>;
+        Relationships: [];
+      };
+      contract_status_history: {
+        Row: {
+          id: string;
+          contract_id: string;
+          old_status: ContractStatus | null;
+          new_status: ContractStatus;
+          changed_by: string | null;
+          changed_at: string;
+        };
+        Insert: {
+          id?: string;
+          contract_id: string;
+          old_status?: ContractStatus | null;
+          new_status: ContractStatus;
+          changed_by?: string | null;
+          changed_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['contract_status_history']['Insert']>;
         Relationships: [];
       };
     };

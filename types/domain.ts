@@ -14,8 +14,6 @@ export type ContractDetailType =
   | 'outro';
 export type ContractStatus = 'ativo' | 'encerrado' | 'cancelado';
 export type RenewalType = 'automatica' | 'manual' | 'nenhuma';
-export type PaymentFrequency = 'mensal' | 'trimestral' | 'semestral' | 'anual' | 'unico' | 'outro';
-export type PaymentStatus = 'pendente' | 'pago' | 'atrasado';
 export type ReadjustmentIndex = 'igpm' | 'ipca' | 'inpc' | 'outro';
 
 export interface CurrentProfile {
@@ -69,17 +67,3 @@ export const RENEWAL_TYPE_LABELS: Record<RenewalType, string> = {
   nenhuma: 'Sem renovação',
 };
 
-export const PAYMENT_FREQUENCY_LABELS: Record<PaymentFrequency, string> = {
-  mensal: 'Mensal',
-  trimestral: 'Trimestral',
-  semestral: 'Semestral',
-  anual: 'Anual',
-  unico: 'Pagamento único',
-  outro: 'Outro',
-};
-
-export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
-  pendente: 'Pendente',
-  pago: 'Pago',
-  atrasado: 'Atrasado',
-};

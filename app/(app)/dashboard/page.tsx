@@ -18,32 +18,23 @@ function IndicatorCard({ title, value }: { title: string; value: string }) {
   );
 }
 
-function sumAmountCents(rows: { amount_cents: number }[] | null): number {
-  return (rows ?? []).reduce((total, row) => total + row.amount_cents, 0);
+function sumAmountCents(rows: { total_amount_cents: number }[] | null): number {
+  return (rows ?? []).reduce((total, row) => total + row.total_amount_cents, 0);
 }
 
 export default async function DashboardPage() {
   const profile = await requireProfile();
   const supabase = await createServerSupabaseClient();
-  const todayISO = new Date().toISOString().slice(0, 10);
 
   const [
     { count: activeCount },
-    { data: monthlyActiveContracts },
-    { count: overduePaymentsCount },
+    { data: activeContracts },
+    { count: distratoCount },
     { data: expiringContracts },
   ] = await Promise.all([
     supabase.from('contracts').select('*', { count: 'exact', head: true }).eq('status', 'ativo'),
-    supabase
-      .from('contracts')
-      .select('amount_cents')
-      .eq('status', 'ativo')
-      .eq('payment_frequency', 'mensal'),
-    supabase
-      .from('contract_payments')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'pendente')
-      .lt('due_date', todayISO),
+    supabase.from('contracts').select('total_amount_cents').eq('status', 'ativo'),
+    supabase.from('contracts').select('*', { count: 'exact', head: true }).eq('has_distrato', true),
     supabase
       .from('contracts_expiring')
       .select('id, title, contract_type, end_date, days_until_expiration')
@@ -53,12 +44,12 @@ export default async function DashboardPage() {
   const cards = [
     <IndicatorCard key="active" title="Contratos ativos" value={String(activeCount ?? 0)} />,
     <IndicatorCard
-      key="monthly"
-      title="Valor mensal comprometido"
-      value={formatCurrencyCents(sumAmountCents(monthlyActiveContracts))}
+      key="total-value"
+      title="Valor total dos contratos ativos"
+      value={formatCurrencyCents(sumAmountCents(activeContracts))}
     />,
     <IndicatorCard key="expiring" title="Vencendo em breve" value={String(expiringContracts?.length ?? 0)} />,
-    <IndicatorCard key="overdue" title="Parcelas em atraso" value={String(overduePaymentsCount ?? 0)} />,
+    <IndicatorCard key="distrato" title="Contratos com distrato" value={String(distratoCount ?? 0)} />,
   ];
 
   return (

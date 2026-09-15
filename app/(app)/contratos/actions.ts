@@ -6,7 +6,6 @@ import { z } from 'zod';
 import { requireProfile, requireRole } from '@/lib/auth';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { parseCurrencyToCents } from '@/lib/format';
-import { generatePaymentSchedule } from '@/lib/contracts';
 import { extractTextFromPdf } from '@/lib/pdf-text';
 import { extractHighlightsFromText, type ExtractedHighlights } from '@/lib/pdf-extract';
 
@@ -34,7 +33,6 @@ const contractSchema = z.object({
   endDate: z.string(),
   renewalType: z.enum(['automatica', 'manual', 'nenhuma']),
   renewalNoticeDays: z.string(),
-  paymentFrequency: z.enum(['mensal', 'trimestral', 'semestral', 'anual', 'unico', 'outro']),
   amount: z.string().min(1, 'Informe o valor do contrato.'),
   readjustmentIndex: z.enum(['igpm', 'ipca', 'inpc', 'outro', '']),
   readjustmentPeriodMonths: z.string(),
@@ -42,12 +40,23 @@ const contractSchema = z.object({
   representativeName: z.string(),
   contactEmail: z.string(),
   contactPhone: z.string(),
+  internalCode: z.string(),
+  department: z.string(),
+  internalManagerId: z.string(),
+  signatureDate: z.string(),
+  terminationReason: z.string(),
+  jurisdictionForum: z.string(),
+  confidentialityPeriodMonths: z.string(),
+  approvedBy: z.string(),
+  alertEmails: z.string(),
   notes: z.string(),
 });
 
 function fail(message: string): never {
   redirect(`/contratos?error=${encodeURIComponent(message)}`);
 }
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function parseContractFields(formData: FormData) {
   const parsed = contractSchema.safeParse({
@@ -59,7 +68,6 @@ function parseContractFields(formData: FormData) {
     endDate: String(formData.get('endDate') ?? ''),
     renewalType: String(formData.get('renewalType') ?? ''),
     renewalNoticeDays: String(formData.get('renewalNoticeDays') ?? ''),
-    paymentFrequency: String(formData.get('paymentFrequency') ?? ''),
     amount: String(formData.get('amount') ?? ''),
     readjustmentIndex: String(formData.get('readjustmentIndex') ?? ''),
     readjustmentPeriodMonths: String(formData.get('readjustmentPeriodMonths') ?? ''),
@@ -67,6 +75,15 @@ function parseContractFields(formData: FormData) {
     representativeName: String(formData.get('representativeName') ?? ''),
     contactEmail: String(formData.get('contactEmail') ?? ''),
     contactPhone: String(formData.get('contactPhone') ?? ''),
+    internalCode: String(formData.get('internalCode') ?? ''),
+    department: String(formData.get('department') ?? ''),
+    internalManagerId: String(formData.get('internalManagerId') ?? ''),
+    signatureDate: String(formData.get('signatureDate') ?? ''),
+    terminationReason: String(formData.get('terminationReason') ?? ''),
+    jurisdictionForum: String(formData.get('jurisdictionForum') ?? ''),
+    confidentialityPeriodMonths: String(formData.get('confidentialityPeriodMonths') ?? ''),
+    approvedBy: String(formData.get('approvedBy') ?? ''),
+    alertEmails: String(formData.get('alertEmails') ?? ''),
     notes: String(formData.get('notes') ?? ''),
   });
 
@@ -86,10 +103,20 @@ function parseContractFields(formData: FormData) {
 
   const renewalNoticeDays = Number.parseInt(parsed.data.renewalNoticeDays, 10);
   const readjustmentPeriodMonths = Number.parseInt(parsed.data.readjustmentPeriodMonths, 10);
+  const confidentialityPeriodMonths = Number.parseInt(parsed.data.confidentialityPeriodMonths, 10);
 
   const contactEmail = parsed.data.contactEmail.trim();
-  if (contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) {
+  if (contactEmail && !EMAIL_PATTERN.test(contactEmail)) {
     fail('Informe um e-mail de contato válido.');
+  }
+
+  const alertEmails = parsed.data.alertEmails
+    .split(/[,;\s]+/)
+    .map((email) => email.trim())
+    .filter(Boolean);
+  const invalidAlertEmail = alertEmails.find((email) => !EMAIL_PATTERN.test(email));
+  if (invalidAlertEmail) {
+    fail(`E-mail de alerta inválido: ${invalidAlertEmail}`);
   }
 
   return {
@@ -106,6 +133,18 @@ function parseContractFields(formData: FormData) {
     representativeName: parsed.data.representativeName.trim() || null,
     contactEmail: contactEmail || null,
     contactPhone: parsed.data.contactPhone.trim() || null,
+    internalCode: parsed.data.internalCode.trim() || null,
+    department: parsed.data.department.trim() || null,
+    internalManagerId: parsed.data.internalManagerId.trim() || null,
+    signatureDate: parsed.data.signatureDate.trim() || null,
+    terminationReason: parsed.data.terminationReason.trim() || null,
+    jurisdictionForum: parsed.data.jurisdictionForum.trim() || null,
+    confidentialityPeriodMonths:
+      Number.isFinite(confidentialityPeriodMonths) && confidentialityPeriodMonths >= 0
+        ? confidentialityPeriodMonths
+        : null,
+    approvedBy: parsed.data.approvedBy.trim() || null,
+    alertEmails: alertEmails.length > 0 ? alertEmails.join(', ') : null,
   };
 }
 
@@ -149,14 +188,22 @@ export async function createContract(formData: FormData) {
       end_date: fields.endDate,
       renewal_type: fields.renewalType,
       renewal_notice_days: fields.renewalNoticeDays,
-      payment_frequency: fields.paymentFrequency,
-      amount_cents: fields.amountCents,
+      total_amount_cents: fields.amountCents,
       readjustment_index: fields.readjustmentIndex,
       readjustment_period_months: fields.readjustmentPeriodMonths,
       has_distrato: fields.hasDistrato,
       representative_name: fields.representativeName,
       contact_email: fields.contactEmail,
       contact_phone: fields.contactPhone,
+      internal_code: fields.internalCode,
+      department: fields.department,
+      internal_manager_id: fields.internalManagerId,
+      signature_date: fields.signatureDate,
+      termination_reason: fields.terminationReason,
+      jurisdiction_forum: fields.jurisdictionForum,
+      confidentiality_period_months: fields.confidentialityPeriodMonths,
+      approved_by: fields.approvedBy,
+      alert_emails: fields.alertEmails,
       notes: fields.notes || null,
       created_by: profile.id,
     })
@@ -165,23 +212,6 @@ export async function createContract(formData: FormData) {
 
   if (insertError || !inserted) {
     fail('Não foi possível registrar o contrato. Tente novamente.');
-  }
-
-  const schedule = generatePaymentSchedule({
-    startDate: fields.startDate,
-    endDate: fields.endDate,
-    frequency: fields.paymentFrequency,
-    amountCents: fields.amountCents,
-  });
-
-  if (schedule.length > 0) {
-    await supabase.from('contract_payments').insert(
-      schedule.map((payment) => ({
-        contract_id: inserted.id,
-        due_date: payment.dueDate,
-        amount_cents: payment.amountCents,
-      })),
-    );
   }
 
   if (file) {
@@ -277,14 +307,22 @@ export async function updateContract(formData: FormData) {
       end_date: fields.endDate,
       renewal_type: fields.renewalType,
       renewal_notice_days: fields.renewalNoticeDays,
-      payment_frequency: fields.paymentFrequency,
-      amount_cents: fields.amountCents,
+      total_amount_cents: fields.amountCents,
       readjustment_index: fields.readjustmentIndex,
       readjustment_period_months: fields.readjustmentPeriodMonths,
       has_distrato: fields.hasDistrato,
       representative_name: fields.representativeName,
       contact_email: fields.contactEmail,
       contact_phone: fields.contactPhone,
+      internal_code: fields.internalCode,
+      department: fields.department,
+      internal_manager_id: fields.internalManagerId,
+      signature_date: fields.signatureDate,
+      termination_reason: fields.terminationReason,
+      jurisdiction_forum: fields.jurisdictionForum,
+      confidentiality_period_months: fields.confidentialityPeriodMonths,
+      approved_by: fields.approvedBy,
+      alert_emails: fields.alertEmails,
       ...(file ? { extracted_highlights: extractedHighlights } : {}),
       notes: fields.notes || null,
       file_path: filePath,
@@ -338,98 +376,73 @@ export async function deleteContract(formData: FormData) {
   redirect('/contratos');
 }
 
-const paymentSchema = z.object({
-  dueDate: z.string().min(1, 'Informe a data de vencimento.'),
-  amount: z.string().min(1, 'Informe o valor da parcela.'),
+const amendmentSchema = z.object({
+  description: z.string().trim().min(1, 'Descreva o aditivo.'),
+  amendmentDate: z.string().min(1, 'Informe a data do aditivo.'),
 });
 
-export async function addPayment(formData: FormData) {
+export async function addAmendment(formData: FormData) {
   await requireProfile();
   const supabase = await createServerSupabaseClient();
 
   const contractId = String(formData.get('contractId') ?? '');
   if (!contractId) fail('Contrato inválido.');
 
-  const parsed = paymentSchema.safeParse({
-    dueDate: String(formData.get('dueDate') ?? ''),
-    amount: String(formData.get('amount') ?? ''),
+  const parsed = amendmentSchema.safeParse({
+    description: String(formData.get('description') ?? ''),
+    amendmentDate: String(formData.get('amendmentDate') ?? ''),
   });
   if (!parsed.success) fail(parsed.error.issues[0]?.message ?? 'Dados inválidos.');
 
-  const amountCents = parseCurrencyToCents(parsed.data.amount);
-  if (amountCents <= 0) fail('Informe um valor válido maior que zero.');
+  const file = extractPdfFile(formData, 'file', 'do aditivo');
 
-  const { error } = await supabase.from('contract_payments').insert({
-    contract_id: contractId,
-    due_date: parsed.data.dueDate,
-    amount_cents: amountCents,
-  });
-  if (error) fail('Não foi possível adicionar a parcela.');
-
-  revalidatePath(`/contratos/${contractId}`);
-  redirect(`/contratos/${contractId}`);
-}
-
-export async function markPaymentPaid(formData: FormData) {
-  await requireProfile();
-  const supabase = await createServerSupabaseClient();
-
-  const paymentId = String(formData.get('paymentId') ?? '');
-  const contractId = String(formData.get('contractId') ?? '');
-  const paidAmountText = String(formData.get('paidAmount') ?? '');
-  if (!paymentId || !contractId) fail('Parcela inválida.');
-
-  const { data: payment } = await supabase
-    .from('contract_payments')
-    .select('amount_cents')
-    .eq('id', paymentId)
-    .single();
-  if (!payment) fail('Parcela não encontrada.');
-
-  const paidAmountCents = paidAmountText ? parseCurrencyToCents(paidAmountText) : payment.amount_cents;
-
-  const { error } = await supabase
-    .from('contract_payments')
-    .update({
-      status: 'pago',
-      paid_at: new Date().toISOString().slice(0, 10),
-      paid_amount_cents: paidAmountCents,
+  const { data: inserted, error } = await supabase
+    .from('contract_amendments')
+    .insert({
+      contract_id: contractId,
+      description: parsed.data.description,
+      amendment_date: parsed.data.amendmentDate,
     })
-    .eq('id', paymentId);
-  if (error) fail('Não foi possível marcar a parcela como paga.');
+    .select('id')
+    .single();
+  if (error || !inserted) fail('Não foi possível adicionar o aditivo.');
+
+  if (file) {
+    const extension = file.name.includes('.') ? file.name.split('.').pop() : 'pdf';
+    const path = `${contractId}/aditivos/${inserted.id}.${extension}`;
+    const { error: uploadError } = await supabase.storage.from('contracts').upload(path, file, {
+      contentType: file.type,
+      upsert: true,
+    });
+    if (!uploadError) {
+      await supabase.from('contract_amendments').update({ file_path: path }).eq('id', inserted.id);
+    }
+  }
 
   revalidatePath(`/contratos/${contractId}`);
   redirect(`/contratos/${contractId}`);
 }
 
-export async function reopenPayment(formData: FormData) {
+export async function deleteAmendment(formData: FormData) {
   await requireProfile();
   const supabase = await createServerSupabaseClient();
 
-  const paymentId = String(formData.get('paymentId') ?? '');
+  const amendmentId = String(formData.get('amendmentId') ?? '');
   const contractId = String(formData.get('contractId') ?? '');
-  if (!paymentId || !contractId) fail('Parcela inválida.');
+  if (!amendmentId || !contractId) fail('Aditivo inválido.');
 
-  const { error } = await supabase
-    .from('contract_payments')
-    .update({ status: 'pendente', paid_at: null, paid_amount_cents: null })
-    .eq('id', paymentId);
-  if (error) fail('Não foi possível reabrir a parcela.');
+  const { data: existing } = await supabase
+    .from('contract_amendments')
+    .select('file_path')
+    .eq('id', amendmentId)
+    .single();
 
-  revalidatePath(`/contratos/${contractId}`);
-  redirect(`/contratos/${contractId}`);
-}
+  const { error } = await supabase.from('contract_amendments').delete().eq('id', amendmentId);
+  if (error) fail('Não foi possível excluir o aditivo.');
 
-export async function deletePayment(formData: FormData) {
-  await requireProfile();
-  const supabase = await createServerSupabaseClient();
-
-  const paymentId = String(formData.get('paymentId') ?? '');
-  const contractId = String(formData.get('contractId') ?? '');
-  if (!paymentId || !contractId) fail('Parcela inválida.');
-
-  const { error } = await supabase.from('contract_payments').delete().eq('id', paymentId);
-  if (error) fail('Não foi possível excluir a parcela.');
+  if (existing?.file_path) {
+    await supabase.storage.from('contracts').remove([existing.file_path]);
+  }
 
   revalidatePath(`/contratos/${contractId}`);
   redirect(`/contratos/${contractId}`);
