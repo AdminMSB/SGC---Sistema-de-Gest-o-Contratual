@@ -8,11 +8,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
 import { ContractStatusBadge } from '@/components/status-badge';
 import { ConfirmSubmitForm } from '@/components/confirm-submit-form';
 import {
+  AMENDMENT_STATUS_LABELS,
   CONTRACT_DETAIL_TYPE_LABELS,
   CONTRACT_STATUS_LABELS,
   CONTRACT_TYPE_LABELS,
@@ -20,7 +23,13 @@ import {
   RENEWAL_TYPE_LABELS,
 } from '@/types/domain';
 import { ContratoForm } from '../contrato-form';
-import { addAmendment, deleteAmendment, deleteContract, updateContractStatus } from '../actions';
+import {
+  addAmendment,
+  deleteAmendment,
+  deleteContract,
+  updateAmendmentStatus,
+  updateContractStatus,
+} from '../actions';
 
 function ExtractedHighlightsCard({ highlights }: { highlights: ExtractedHighlights | null }) {
   if (!highlights) return null;
@@ -284,46 +293,67 @@ export default async function ContratoDetalhePage({
             <TableHeader>
               <TableRow>
                 <TableHead>Data</TableHead>
-                <TableHead>Descrição</TableHead>
+                <TableHead>Nome do documento</TableHead>
+                <TableHead>Resumo</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead>Documento</TableHead>
                 <TableHead className="w-0">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(amendments ?? []).map((amendment) => (
-                <TableRow key={amendment.id}>
-                  <TableCell>{formatDate(amendment.amendment_date)}</TableCell>
-                  <TableCell>{amendment.description}</TableCell>
-                  <TableCell>
-                    {amendmentFileUrls.has(amendment.id) ? (
-                      <a
-                        href={amendmentFileUrls.get(amendment.id)}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-primary hover:underline"
-                      >
-                        Baixar PDF
-                      </a>
-                    ) : (
-                      '—'
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <ConfirmSubmitForm
-                      action={deleteAmendment}
-                      confirmMessage="Excluir este aditivo?"
-                      buttonLabel="Excluir"
-                      buttonSize="sm"
-                    >
-                      <input type="hidden" name="amendmentId" value={amendment.id} />
-                      <input type="hidden" name="contractId" value={contract.id} />
-                    </ConfirmSubmitForm>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {(amendments ?? []).map((amendment) => {
+                const nextStatus = amendment.status === 'assinado' ? 'em_analise' : 'assinado';
+                return (
+                  <TableRow key={amendment.id}>
+                    <TableCell>{formatDate(amendment.amendment_date)}</TableCell>
+                    <TableCell>{amendment.document_name ?? '—'}</TableCell>
+                    <TableCell>{amendment.description}</TableCell>
+                    <TableCell>
+                      <Badge tone={amendment.status === 'assinado' ? 'success' : 'warning'}>
+                        {AMENDMENT_STATUS_LABELS[amendment.status]}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {amendmentFileUrls.has(amendment.id) ? (
+                        <a
+                          href={amendmentFileUrls.get(amendment.id)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-primary hover:underline"
+                        >
+                          Baixar PDF
+                        </a>
+                      ) : (
+                        '—'
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center justify-end gap-2">
+                        <form action={updateAmendmentStatus}>
+                          <input type="hidden" name="amendmentId" value={amendment.id} />
+                          <input type="hidden" name="contractId" value={contract.id} />
+                          <input type="hidden" name="status" value={nextStatus} />
+                          <Button type="submit" variant="secondary" size="sm">
+                            Marcar como {AMENDMENT_STATUS_LABELS[nextStatus].toLowerCase()}
+                          </Button>
+                        </form>
+                        <ConfirmSubmitForm
+                          action={deleteAmendment}
+                          confirmMessage="Excluir este aditivo?"
+                          buttonLabel="Excluir"
+                          buttonSize="sm"
+                        >
+                          <input type="hidden" name="amendmentId" value={amendment.id} />
+                          <input type="hidden" name="contractId" value={contract.id} />
+                        </ConfirmSubmitForm>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
               {(amendments ?? []).length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center text-muted-foreground">
                     Nenhum aditivo registrado.
                   </TableCell>
                 </TableRow>
@@ -335,8 +365,24 @@ export default async function ContratoDetalhePage({
             <input type="hidden" name="contractId" value={contract.id} />
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
+                <Label htmlFor="new-amendment-name">Nome do documento</Label>
+                <Input id="new-amendment-name" name="documentName" type="text" placeholder="Ex.: 1º Termo Aditivo" />
+              </div>
+              <div>
                 <Label htmlFor="new-amendment-date">Data do aditivo</Label>
                 <Input id="new-amendment-date" name="amendmentDate" type="date" required />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <Label htmlFor="new-amendment-status">Status</Label>
+                <Select id="new-amendment-status" name="status" defaultValue="em_analise">
+                  {Object.entries(AMENDMENT_STATUS_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </Select>
               </div>
               <div>
                 <Label htmlFor="new-amendment-file">Documento (PDF, opcional)</Label>
@@ -344,7 +390,7 @@ export default async function ContratoDetalhePage({
               </div>
             </div>
             <div>
-              <Label htmlFor="new-amendment-description">Descrição</Label>
+              <Label htmlFor="new-amendment-description">Resumo do documento</Label>
               <Textarea id="new-amendment-description" name="description" rows={2} required />
             </div>
             <div>

@@ -2,6 +2,7 @@
 // Se o schema mudar, atualize este arquivo (ou gere via `supabase gen types typescript`).
 
 import type {
+  AmendmentStatus,
   ContractDetailType,
   ContractStatus,
   ContractType,
@@ -110,7 +111,9 @@ export interface Database {
         Row: {
           id: string;
           contract_id: string;
+          document_name: string | null;
           description: string;
+          status: AmendmentStatus;
           amendment_date: string;
           file_path: string | null;
           created_by: string | null;
@@ -119,7 +122,9 @@ export interface Database {
         Insert: {
           id?: string;
           contract_id: string;
+          document_name?: string | null;
           description: string;
+          status?: AmendmentStatus;
           amendment_date: string;
           file_path?: string | null;
           created_by?: string | null;

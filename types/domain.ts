@@ -15,6 +15,7 @@ export type ContractDetailType =
 export type ContractStatus = 'ativo' | 'encerrado' | 'cancelado';
 export type RenewalType = 'automatica' | 'manual' | 'nenhuma';
 export type ReadjustmentIndex = 'igpm' | 'ipca' | 'inpc' | 'outro';
+export type AmendmentStatus = 'em_analise' | 'assinado';
 
 export interface CurrentProfile {
   id: string;
@@ -65,5 +66,10 @@ export const RENEWAL_TYPE_LABELS: Record<RenewalType, string> = {
   automatica: 'Renovação automática',
   manual: 'Renovação manual',
   nenhuma: 'Sem renovação',
+};
+
+export const AMENDMENT_STATUS_LABELS: Record<AmendmentStatus, string> = {
+  em_analise: 'Em análise',
+  assinado: 'Assinado',
 };
 
