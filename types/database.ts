@@ -2,13 +2,16 @@
 // Se o schema mudar, atualize este arquivo (ou gere via `supabase gen types typescript`).
 
 import type {
+  ContractDetailType,
   ContractStatus,
   ContractType,
   PaymentFrequency,
   PaymentStatus,
+  ReadjustmentIndex,
   RenewalType,
   Role,
 } from './domain';
+import type { ExtractedHighlights } from '@/lib/pdf-extract';
 
 export interface Database {
   public: {
@@ -35,6 +38,7 @@ export interface Database {
           title: string;
           counterparty: string;
           contract_type: ContractType;
+          contract_detail_type: ContractDetailType | null;
           status: ContractStatus;
           start_date: string;
           end_date: string | null;
@@ -42,8 +46,13 @@ export interface Database {
           renewal_notice_days: number;
           payment_frequency: PaymentFrequency;
           amount_cents: number;
+          counterparty_cnpj: string | null;
+          object_description: string | null;
+          readjustment_index: ReadjustmentIndex | null;
+          readjustment_period_months: number | null;
           file_path: string | null;
           notes: string | null;
+          extracted_highlights: ExtractedHighlights | null;
           created_by: string | null;
           created_at: string;
           updated_at: string;
@@ -53,6 +62,7 @@ export interface Database {
           title: string;
           counterparty: string;
           contract_type?: ContractType;
+          contract_detail_type?: ContractDetailType | null;
           status?: ContractStatus;
           start_date: string;
           end_date?: string | null;
@@ -60,8 +70,13 @@ export interface Database {
           renewal_notice_days?: number;
           payment_frequency?: PaymentFrequency;
           amount_cents: number;
+          counterparty_cnpj?: string | null;
+          object_description?: string | null;
+          readjustment_index?: ReadjustmentIndex | null;
+          readjustment_period_months?: number | null;
           file_path?: string | null;
           notes?: string | null;
+          extracted_highlights?: ExtractedHighlights | null;
           created_by?: string | null;
           created_at?: string;
           updated_at?: string;

@@ -1,10 +1,21 @@
 export type Role = 'membro' | 'admin';
 
-export type ContractType = 'fornecedor' | 'aluguel' | 'servico' | 'outro';
+export type ContractType = 'servico' | 'locacao' | 'fornecimento' | 'comodato' | 'consultoria';
+export type ContractDetailType =
+  | 'manutencao'
+  | 'licenca_uso'
+  | 'mao_de_obra'
+  | 'servicos_advocaticios'
+  | 'gestao_viagens'
+  | 'seguro_patrimonial'
+  | 'seguro_predial'
+  | 'seguro_auto'
+  | 'outro';
 export type ContractStatus = 'ativo' | 'encerrado' | 'cancelado';
 export type RenewalType = 'automatica' | 'manual' | 'nenhuma';
 export type PaymentFrequency = 'mensal' | 'trimestral' | 'semestral' | 'anual' | 'unico' | 'outro';
 export type PaymentStatus = 'pendente' | 'pago' | 'atrasado';
+export type ReadjustmentIndex = 'igpm' | 'ipca' | 'inpc' | 'outro';
 
 export interface CurrentProfile {
   id: string;
@@ -18,9 +29,29 @@ export const ROLE_LABELS: Record<Role, string> = {
 };
 
 export const CONTRACT_TYPE_LABELS: Record<ContractType, string> = {
-  fornecedor: 'Fornecedor/prestador de serviço',
-  aluguel: 'Locação',
   servico: 'Serviço',
+  locacao: 'Locação',
+  fornecimento: 'Fornecimento',
+  comodato: 'Comodato',
+  consultoria: 'Consultoria',
+};
+
+export const CONTRACT_DETAIL_TYPE_LABELS: Record<ContractDetailType, string> = {
+  manutencao: 'Manutenção',
+  licenca_uso: 'Licença de uso/acesso',
+  mao_de_obra: 'Mão de obra',
+  servicos_advocaticios: 'Serviços advocatícios',
+  gestao_viagens: 'Gestão de viagens',
+  seguro_patrimonial: 'Seguro patrimonial',
+  seguro_predial: 'Seguro predial',
+  seguro_auto: 'Seguro de auto',
+  outro: 'Outro',
+};
+
+export const READJUSTMENT_INDEX_LABELS: Record<ReadjustmentIndex, string> = {
+  igpm: 'IGPM',
+  ipca: 'IPCA',
+  inpc: 'INPC',
   outro: 'Outro',
 };
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Button, type ButtonProps } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -8,16 +8,25 @@ import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import {
+  CONTRACT_DETAIL_TYPE_LABELS,
   CONTRACT_TYPE_LABELS,
   PAYMENT_FREQUENCY_LABELS,
+  READJUSTMENT_INDEX_LABELS,
   RENEWAL_TYPE_LABELS,
+  type ContractDetailType,
   type ContractType,
   type PaymentFrequency,
+  type ReadjustmentIndex,
   type RenewalType,
 } from '@/types/domain';
 import { createContract, updateContract } from './actions';
 
 const CONTRACT_TYPE_ENTRIES = Object.entries(CONTRACT_TYPE_LABELS) as [ContractType, string][];
+const CONTRACT_DETAIL_TYPE_ENTRIES = Object.entries(CONTRACT_DETAIL_TYPE_LABELS) as [
+  ContractDetailType,
+  string,
+][];
+const READJUSTMENT_INDEX_ENTRIES = Object.entries(READJUSTMENT_INDEX_LABELS) as [ReadjustmentIndex, string][];
 const RENEWAL_TYPE_ENTRIES = Object.entries(RENEWAL_TYPE_LABELS) as [RenewalType, string][];
 const PAYMENT_FREQUENCY_ENTRIES = Object.entries(PAYMENT_FREQUENCY_LABELS) as [PaymentFrequency, string][];
 
@@ -26,12 +35,17 @@ export interface ContractDefaults {
   title: string;
   counterparty: string;
   contract_type: ContractType;
+  contract_detail_type: ContractDetailType | null;
   start_date: string;
   end_date: string | null;
   renewal_type: RenewalType;
   renewal_notice_days: number;
   payment_frequency: PaymentFrequency;
   amount_cents: number;
+  counterparty_cnpj: string | null;
+  object_description: string | null;
+  readjustment_index: ReadjustmentIndex | null;
+  readjustment_period_months: number | null;
   notes: string | null;
   file_path: string | null;
 }
@@ -48,10 +62,100 @@ function centsToAmountText(cents: number | null | undefined): string {
   return (cents / 100).toFixed(2).replace('.', ',');
 }
 
+interface ExtractPdfResponse {
+  suggestions: {
+    startDate: string | null;
+    endDate: string | null;
+    amountCents: number | null;
+    counterpartyCnpj: string | null;
+    objectDescription: string | null;
+    contractType: ContractType | null;
+    contractDetailType: ContractDetailType | null;
+    readjustmentIndex: ReadjustmentIndex | null;
+    readjustmentPeriodMonths: number | null;
+  } | null;
+  highlights: { clauses: string[] } | null;
+}
+
 export function ContratoForm({ mode, contract, triggerLabel, triggerVariant }: ContratoFormProps) {
   const [open, setOpen] = useState(false);
+  const [extracting, setExtracting] = useState(false);
+  const [extractionNote, setExtractionNote] = useState<string | null>(null);
+  const startDateRef = useRef<HTMLInputElement>(null);
+  const endDateRef = useRef<HTMLInputElement>(null);
+  const amountRef = useRef<HTMLInputElement>(null);
+  const cnpjRef = useRef<HTMLInputElement>(null);
+  const objectDescriptionRef = useRef<HTMLTextAreaElement>(null);
+  const contractTypeRef = useRef<HTMLSelectElement>(null);
+  const contractDetailTypeRef = useRef<HTMLSelectElement>(null);
+  const readjustmentIndexRef = useRef<HTMLSelectElement>(null);
+  const readjustmentPeriodRef = useRef<HTMLInputElement>(null);
   const action = mode === 'edit' ? updateContract : createContract;
   const title = mode === 'edit' ? 'Editar contrato' : 'Novo contrato';
+
+  async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setExtracting(true);
+    setExtractionNote(null);
+    try {
+      const body = new FormData();
+      body.append('file', file);
+      const response = await fetch('/api/extract-pdf', { method: 'POST', body });
+      if (!response.ok) return;
+
+      const data: ExtractPdfResponse = await response.json();
+      const { suggestions, highlights } = data;
+      if (!suggestions) {
+        setExtractionNote('Não encontramos texto legível neste PDF para pré-preencher os campos.');
+        return;
+      }
+
+      if (suggestions.startDate && startDateRef.current && !startDateRef.current.value) {
+        startDateRef.current.value = suggestions.startDate;
+      }
+      if (suggestions.endDate && endDateRef.current && !endDateRef.current.value) {
+        endDateRef.current.value = suggestions.endDate;
+      }
+      if (suggestions.amountCents != null && amountRef.current && !amountRef.current.value) {
+        amountRef.current.value = centsToAmountText(suggestions.amountCents);
+      }
+      if (suggestions.counterpartyCnpj && cnpjRef.current && !cnpjRef.current.value) {
+        cnpjRef.current.value = suggestions.counterpartyCnpj;
+      }
+      if (suggestions.objectDescription && objectDescriptionRef.current && !objectDescriptionRef.current.value) {
+        objectDescriptionRef.current.value = suggestions.objectDescription;
+      }
+      if (suggestions.readjustmentPeriodMonths != null && readjustmentPeriodRef.current && !readjustmentPeriodRef.current.value) {
+        readjustmentPeriodRef.current.value = String(suggestions.readjustmentPeriodMonths);
+      }
+      // Categoria/detalhamento/índice de reajuste só são pré-preenchidos ao criar um contrato novo,
+      // para nunca sobrescrever uma escolha já salva ao editar.
+      if (mode === 'create') {
+        if (suggestions.contractType && contractTypeRef.current) {
+          contractTypeRef.current.value = suggestions.contractType;
+        }
+        if (suggestions.contractDetailType && contractDetailTypeRef.current) {
+          contractDetailTypeRef.current.value = suggestions.contractDetailType;
+        }
+        if (suggestions.readjustmentIndex && readjustmentIndexRef.current) {
+          readjustmentIndexRef.current.value = suggestions.readjustmentIndex;
+        }
+      }
+
+      const clauses = highlights?.clauses ?? [];
+      setExtractionNote(
+        clauses.length > 0
+          ? `Detectamos no PDF: ${clauses.join(', ')}.`
+          : 'Campos pré-preenchidos a partir do PDF — confira antes de salvar.',
+      );
+    } catch {
+      // Extração é só uma conveniência; falha aqui não deve travar o cadastro manual.
+    } finally {
+      setExtracting(false);
+    }
+  }
 
   return (
     <>
@@ -89,14 +193,15 @@ export function ContratoForm({ mode, contract, triggerLabel, triggerVariant }: C
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor={`contractType-${mode}`}>Tipo</Label>
-              <Select id={`contractType-${mode}`} name="contractType" defaultValue={contract?.contract_type ?? 'outro'} required>
-                {CONTRACT_TYPE_ENTRIES.map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </Select>
+              <Label htmlFor={`counterpartyCnpj-${mode}`}>CNPJ da contraparte</Label>
+              <Input
+                ref={cnpjRef}
+                id={`counterpartyCnpj-${mode}`}
+                name="counterpartyCnpj"
+                type="text"
+                placeholder="00.000.000/0000-00"
+                defaultValue={contract?.counterparty_cnpj ?? ''}
+              />
             </div>
             <div>
               <Label htmlFor={`paymentFrequency-${mode}`}>Frequência de pagamento</Label>
@@ -117,8 +222,56 @@ export function ContratoForm({ mode, contract, triggerLabel, triggerVariant }: C
 
           <div className="grid grid-cols-2 gap-4">
             <div>
+              <Label htmlFor={`contractType-${mode}`}>Categoria</Label>
+              <Select
+                ref={contractTypeRef}
+                id={`contractType-${mode}`}
+                name="contractType"
+                defaultValue={contract?.contract_type ?? 'servico'}
+                required
+              >
+                {CONTRACT_TYPE_ENTRIES.map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor={`contractDetailType-${mode}`}>Detalhamento</Label>
+              <Select
+                ref={contractDetailTypeRef}
+                id={`contractDetailType-${mode}`}
+                name="contractDetailType"
+                defaultValue={contract?.contract_detail_type ?? ''}
+              >
+                <option value="">Não especificado</option>
+                {CONTRACT_DETAIL_TYPE_ENTRIES.map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor={`objectDescription-${mode}`}>Objeto do contrato</Label>
+            <Textarea
+              ref={objectDescriptionRef}
+              id={`objectDescription-${mode}`}
+              name="objectDescription"
+              defaultValue={contract?.object_description ?? ''}
+              rows={3}
+              placeholder="Do que trata o contrato (pode ser pré-preenchido a partir do PDF)."
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
               <Label htmlFor={`startDate-${mode}`}>Início da vigência</Label>
               <Input
+                ref={startDateRef}
                 id={`startDate-${mode}`}
                 name="startDate"
                 type="date"
@@ -129,6 +282,7 @@ export function ContratoForm({ mode, contract, triggerLabel, triggerVariant }: C
             <div>
               <Label htmlFor={`endDate-${mode}`}>Fim da vigência</Label>
               <Input
+                ref={endDateRef}
                 id={`endDate-${mode}`}
                 name="endDate"
                 type="date"
@@ -165,6 +319,7 @@ export function ContratoForm({ mode, contract, triggerLabel, triggerVariant }: C
           <div>
             <Label htmlFor={`amount-${mode}`}>Valor da parcela</Label>
             <Input
+              ref={amountRef}
               id={`amount-${mode}`}
               name="amount"
               type="text"
@@ -181,6 +336,37 @@ export function ContratoForm({ mode, contract, triggerLabel, triggerVariant }: C
             )}
           </div>
 
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor={`readjustmentIndex-${mode}`}>Índice de reajuste</Label>
+              <Select
+                ref={readjustmentIndexRef}
+                id={`readjustmentIndex-${mode}`}
+                name="readjustmentIndex"
+                defaultValue={contract?.readjustment_index ?? ''}
+              >
+                <option value="">Nenhum</option>
+                {READJUSTMENT_INDEX_ENTRIES.map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor={`readjustmentPeriodMonths-${mode}`}>Período de reajuste (meses)</Label>
+              <Input
+                ref={readjustmentPeriodRef}
+                id={`readjustmentPeriodMonths-${mode}`}
+                name="readjustmentPeriodMonths"
+                type="number"
+                min={0}
+                placeholder="Ex.: 12"
+                defaultValue={contract?.readjustment_period_months ?? ''}
+              />
+            </div>
+          </div>
+
           <div>
             <Label htmlFor={`notes-${mode}`}>Observações</Label>
             <Textarea id={`notes-${mode}`} name="notes" defaultValue={contract?.notes ?? ''} rows={3} />
@@ -188,11 +374,16 @@ export function ContratoForm({ mode, contract, triggerLabel, triggerVariant }: C
 
           <div>
             <Label htmlFor={`file-${mode}`}>Arquivo do contrato (PDF)</Label>
-            <Input id={`file-${mode}`} name="file" type="file" accept="application/pdf" />
+            <Input id={`file-${mode}`} name="file" type="file" accept="application/pdf" onChange={handleFileChange} />
             <p className="mt-1 text-xs text-muted-foreground">
-              PDF, até 10MB.
+              PDF, até 10MB. Ao selecionar o arquivo, tentamos ler início/fim da vigência, valor,
+              CNPJ da contraparte, objeto, categoria e reajuste para pré-preencher os campos acima.
               {mode === 'edit' && contract?.file_path ? ' Envie um novo arquivo para substituir o atual.' : ''}
             </p>
+            {extracting && <p className="mt-1 text-xs text-muted-foreground">Lendo o PDF…</p>}
+            {!extracting && extractionNote && (
+              <p className="mt-1 text-xs text-muted-foreground">{extractionNote}</p>
+            )}
           </div>
 
           <div className="flex justify-end gap-2">

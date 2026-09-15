@@ -7,6 +7,8 @@ import { requireProfile, requireRole } from '@/lib/auth';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { parseCurrencyToCents } from '@/lib/format';
 import { generatePaymentSchedule } from '@/lib/contracts';
+import { extractTextFromPdf } from '@/lib/pdf-text';
+import { extractHighlightsFromText, type ExtractedHighlights } from '@/lib/pdf-extract';
 
 const ACCEPTED_FILE_TYPES = ['application/pdf'];
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
@@ -14,13 +16,29 @@ const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
 const contractSchema = z.object({
   title: z.string().trim().min(1, 'Informe o nome/objeto do contrato.'),
   counterparty: z.string().trim().min(1, 'Informe a contraparte (fornecedor/locador/cliente).'),
-  contractType: z.enum(['fornecedor', 'aluguel', 'servico', 'outro']),
+  counterpartyCnpj: z.string(),
+  contractType: z.enum(['servico', 'locacao', 'fornecimento', 'comodato', 'consultoria']),
+  contractDetailType: z.enum([
+    'manutencao',
+    'licenca_uso',
+    'mao_de_obra',
+    'servicos_advocaticios',
+    'gestao_viagens',
+    'seguro_patrimonial',
+    'seguro_predial',
+    'seguro_auto',
+    'outro',
+    '',
+  ]),
+  objectDescription: z.string(),
   startDate: z.string().min(1, 'Informe a data de início.'),
   endDate: z.string(),
   renewalType: z.enum(['automatica', 'manual', 'nenhuma']),
   renewalNoticeDays: z.string(),
   paymentFrequency: z.enum(['mensal', 'trimestral', 'semestral', 'anual', 'unico', 'outro']),
   amount: z.string().min(1, 'Informe o valor do contrato.'),
+  readjustmentIndex: z.enum(['igpm', 'ipca', 'inpc', 'outro', '']),
+  readjustmentPeriodMonths: z.string(),
   notes: z.string(),
 });
 
@@ -32,13 +50,18 @@ function parseContractFields(formData: FormData) {
   const parsed = contractSchema.safeParse({
     title: String(formData.get('title') ?? ''),
     counterparty: String(formData.get('counterparty') ?? ''),
+    counterpartyCnpj: String(formData.get('counterpartyCnpj') ?? ''),
     contractType: String(formData.get('contractType') ?? ''),
+    contractDetailType: String(formData.get('contractDetailType') ?? ''),
+    objectDescription: String(formData.get('objectDescription') ?? ''),
     startDate: String(formData.get('startDate') ?? ''),
     endDate: String(formData.get('endDate') ?? ''),
     renewalType: String(formData.get('renewalType') ?? ''),
     renewalNoticeDays: String(formData.get('renewalNoticeDays') ?? ''),
     paymentFrequency: String(formData.get('paymentFrequency') ?? ''),
     amount: String(formData.get('amount') ?? ''),
+    readjustmentIndex: String(formData.get('readjustmentIndex') ?? ''),
+    readjustmentPeriodMonths: String(formData.get('readjustmentPeriodMonths') ?? ''),
     notes: String(formData.get('notes') ?? ''),
   });
 
@@ -57,12 +80,19 @@ function parseContractFields(formData: FormData) {
   }
 
   const renewalNoticeDays = Number.parseInt(parsed.data.renewalNoticeDays, 10);
+  const readjustmentPeriodMonths = Number.parseInt(parsed.data.readjustmentPeriodMonths, 10);
 
   return {
     ...parsed.data,
     endDate,
     amountCents,
     renewalNoticeDays: Number.isFinite(renewalNoticeDays) && renewalNoticeDays >= 0 ? renewalNoticeDays : 30,
+    contractDetailType: parsed.data.contractDetailType || null,
+    readjustmentIndex: parsed.data.readjustmentIndex || null,
+    readjustmentPeriodMonths:
+      Number.isFinite(readjustmentPeriodMonths) && readjustmentPeriodMonths >= 0 ? readjustmentPeriodMonths : null,
+    counterpartyCnpj: parsed.data.counterpartyCnpj.trim() || null,
+    objectDescription: parsed.data.objectDescription.trim() || null,
   };
 }
 
@@ -81,6 +111,11 @@ function extractContractFile(formData: FormData): File | null {
   return file;
 }
 
+async function extractHighlights(file: File): Promise<ExtractedHighlights | null> {
+  const text = await extractTextFromPdf(Buffer.from(await file.arrayBuffer()));
+  return text.trim() ? extractHighlightsFromText(text) : null;
+}
+
 export async function createContract(formData: FormData) {
   const profile = await requireProfile();
   const supabase = await createServerSupabaseClient();
@@ -93,13 +128,18 @@ export async function createContract(formData: FormData) {
     .insert({
       title: fields.title,
       counterparty: fields.counterparty,
+      counterparty_cnpj: fields.counterpartyCnpj,
       contract_type: fields.contractType,
+      contract_detail_type: fields.contractDetailType,
+      object_description: fields.objectDescription,
       start_date: fields.startDate,
       end_date: fields.endDate,
       renewal_type: fields.renewalType,
       renewal_notice_days: fields.renewalNoticeDays,
       payment_frequency: fields.paymentFrequency,
       amount_cents: fields.amountCents,
+      readjustment_index: fields.readjustmentIndex,
+      readjustment_period_months: fields.readjustmentPeriodMonths,
       notes: fields.notes || null,
       created_by: profile.id,
     })
@@ -130,12 +170,18 @@ export async function createContract(formData: FormData) {
   if (file) {
     const extension = file.name.includes('.') ? file.name.split('.').pop() : 'pdf';
     const path = `${inserted.id}/contrato.${extension}`;
-    const { error: uploadError } = await supabase.storage.from('contracts').upload(path, file, {
-      contentType: file.type,
-      upsert: true,
-    });
+    const [{ error: uploadError }, highlights] = await Promise.all([
+      supabase.storage.from('contracts').upload(path, file, {
+        contentType: file.type,
+        upsert: true,
+      }),
+      extractHighlights(file),
+    ]);
     if (!uploadError) {
-      await supabase.from('contracts').update({ file_path: path }).eq('id', inserted.id);
+      await supabase
+        .from('contracts')
+        .update({ file_path: path, extracted_highlights: highlights })
+        .eq('id', inserted.id);
     }
   }
 
@@ -157,15 +203,20 @@ export async function updateContract(formData: FormData) {
   if (!existing) fail('Contrato não encontrado.');
 
   let filePath = existing.file_path;
+  let extractedHighlights: ExtractedHighlights | null = null;
   if (file) {
     const extension = file.name.includes('.') ? file.name.split('.').pop() : 'pdf';
     const path = `${id}/contrato.${extension}`;
-    const { error: uploadError } = await supabase.storage.from('contracts').upload(path, file, {
-      contentType: file.type,
-      upsert: true,
-    });
+    const [{ error: uploadError }, highlights] = await Promise.all([
+      supabase.storage.from('contracts').upload(path, file, {
+        contentType: file.type,
+        upsert: true,
+      }),
+      extractHighlights(file),
+    ]);
     if (uploadError) fail('Não foi possível enviar o arquivo do contrato.');
     filePath = path;
+    extractedHighlights = highlights;
   }
 
   const { error: updateError } = await supabase
@@ -173,13 +224,19 @@ export async function updateContract(formData: FormData) {
     .update({
       title: fields.title,
       counterparty: fields.counterparty,
+      counterparty_cnpj: fields.counterpartyCnpj,
       contract_type: fields.contractType,
+      contract_detail_type: fields.contractDetailType,
+      object_description: fields.objectDescription,
       start_date: fields.startDate,
       end_date: fields.endDate,
       renewal_type: fields.renewalType,
       renewal_notice_days: fields.renewalNoticeDays,
       payment_frequency: fields.paymentFrequency,
       amount_cents: fields.amountCents,
+      readjustment_index: fields.readjustmentIndex,
+      readjustment_period_months: fields.readjustmentPeriodMonths,
+      ...(file ? { extracted_highlights: extractedHighlights } : {}),
       notes: fields.notes || null,
       file_path: filePath,
     })

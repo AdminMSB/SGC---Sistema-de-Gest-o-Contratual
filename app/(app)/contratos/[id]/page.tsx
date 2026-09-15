@@ -4,6 +4,7 @@ import { requireProfile } from '@/lib/auth';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { formatCurrencyCents, formatDate } from '@/lib/format';
 import { paymentEffectiveStatus } from '@/lib/contracts';
+import type { ExtractedHighlights } from '@/lib/pdf-extract';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -12,8 +13,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ContractStatusBadge, PaymentStatusBadge } from '@/components/status-badge';
 import { ConfirmSubmitForm } from '@/components/confirm-submit-form';
 import {
+  CONTRACT_DETAIL_TYPE_LABELS,
   CONTRACT_TYPE_LABELS,
   PAYMENT_FREQUENCY_LABELS,
+  READJUSTMENT_INDEX_LABELS,
   RENEWAL_TYPE_LABELS,
 } from '@/types/domain';
 import { ContratoForm } from '../contrato-form';
@@ -25,6 +28,61 @@ import {
   reopenPayment,
   updateContractStatus,
 } from '../actions';
+
+function ExtractedHighlightsCard({ highlights }: { highlights: ExtractedHighlights | null }) {
+  if (!highlights) return null;
+
+  const hasContent =
+    highlights.dates.length > 0 ||
+    highlights.amountsCents.length > 0 ||
+    highlights.cnpjs.length > 0 ||
+    highlights.clauses.length > 0 ||
+    highlights.duration != null;
+  if (!hasContent) return null;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Destaques extraídos do PDF</CardTitle>
+        <CardDescription>
+          Identificados automaticamente por padrões de texto no arquivo enviado — confira sempre
+          contra o documento original.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex flex-col">
+          {highlights.dates.length > 0 && (
+            <DetailRow label="Datas encontradas" value={highlights.dates.map(formatDate).join(', ')} />
+          )}
+          {highlights.amountsCents.length > 0 && (
+            <DetailRow
+              label="Valores encontrados"
+              value={highlights.amountsCents.map(formatCurrencyCents).join(', ')}
+            />
+          )}
+          {highlights.duration != null && (
+            <DetailRow
+              label="Prazo de vigência mencionado"
+              value={`${highlights.duration.amount} ${highlights.duration.unit}`}
+            />
+          )}
+          {highlights.readjustmentPeriodMonths != null && (
+            <DetailRow
+              label="Período de reajuste mencionado"
+              value={`${highlights.readjustmentPeriodMonths} mês(es)`}
+            />
+          )}
+          {highlights.cnpjs.length > 0 && (
+            <DetailRow label="CNPJs encontrados" value={highlights.cnpjs.join(', ')} />
+          )}
+          {highlights.clauses.length > 0 && (
+            <DetailRow label="Cláusulas notáveis" value={highlights.clauses.join(', ')} />
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
@@ -103,7 +161,16 @@ export default async function ContratoDetalhePage({
           </CardHeader>
           <CardContent>
             <div className="flex flex-col">
-              <DetailRow label="Tipo" value={CONTRACT_TYPE_LABELS[contract.contract_type]} />
+              <DetailRow label="Categoria" value={CONTRACT_TYPE_LABELS[contract.contract_type]} />
+              {contract.contract_detail_type && (
+                <DetailRow label="Detalhamento" value={CONTRACT_DETAIL_TYPE_LABELS[contract.contract_detail_type]} />
+              )}
+              {contract.counterparty_cnpj && (
+                <DetailRow label="CNPJ da contraparte" value={contract.counterparty_cnpj} />
+              )}
+              {contract.object_description && (
+                <DetailRow label="Objeto do contrato" value={contract.object_description} />
+              )}
               <DetailRow label="Status" value={<ContractStatusBadge status={contract.status} />} />
               <DetailRow label="Início da vigência" value={formatDate(contract.start_date)} />
               <DetailRow
@@ -114,6 +181,16 @@ export default async function ContratoDetalhePage({
               <DetailRow label="Aviso de vencimento" value={`${contract.renewal_notice_days} dia(s) de antecedência`} />
               <DetailRow label="Frequência de pagamento" value={PAYMENT_FREQUENCY_LABELS[contract.payment_frequency]} />
               <DetailRow label="Valor da parcela" value={formatCurrencyCents(contract.amount_cents)} />
+              {contract.readjustment_index && (
+                <DetailRow
+                  label="Reajuste"
+                  value={
+                    contract.readjustment_period_months != null
+                      ? `${READJUSTMENT_INDEX_LABELS[contract.readjustment_index]} a cada ${contract.readjustment_period_months} mês(es)`
+                      : READJUSTMENT_INDEX_LABELS[contract.readjustment_index]
+                  }
+                />
+              )}
               {contract.notes && <DetailRow label="Observações" value={contract.notes} />}
               <DetailRow
                 label="Arquivo do contrato"
@@ -158,6 +235,8 @@ export default async function ContratoDetalhePage({
           </CardContent>
         </Card>
       </div>
+
+      <ExtractedHighlightsCard highlights={contract.extracted_highlights} />
 
       <Card>
         <CardHeader>
