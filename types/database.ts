@@ -47,7 +47,6 @@ export interface Database {
           payment_frequency: PaymentFrequency;
           amount_cents: number;
           counterparty_cnpj: string | null;
-          object_description: string | null;
           readjustment_index: ReadjustmentIndex | null;
           readjustment_period_months: number | null;
           file_path: string | null;
@@ -71,7 +70,6 @@ export interface Database {
           payment_frequency?: PaymentFrequency;
           amount_cents: number;
           counterparty_cnpj?: string | null;
-          object_description?: string | null;
           readjustment_index?: ReadjustmentIndex | null;
           readjustment_period_months?: number | null;
           file_path?: string | null;

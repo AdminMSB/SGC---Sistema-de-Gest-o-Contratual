@@ -37,7 +37,8 @@ function ExtractedHighlightsCard({ highlights }: { highlights: ExtractedHighligh
     highlights.amountsCents.length > 0 ||
     highlights.cnpjs.length > 0 ||
     highlights.clauses.length > 0 ||
-    highlights.duration != null;
+    highlights.duration != null ||
+    highlights.objectSummary != null;
   if (!hasContent) return null;
 
   return (
@@ -51,6 +52,7 @@ function ExtractedHighlightsCard({ highlights }: { highlights: ExtractedHighligh
       </CardHeader>
       <CardContent>
         <div className="flex flex-col">
+          {highlights.objectSummary && <DetailRow label="Objeto (extraído do PDF)" value={highlights.objectSummary} />}
           {highlights.dates.length > 0 && (
             <DetailRow label="Datas encontradas" value={highlights.dates.map(formatDate).join(', ')} />
           )}
@@ -167,9 +169,6 @@ export default async function ContratoDetalhePage({
               )}
               {contract.counterparty_cnpj && (
                 <DetailRow label="CNPJ da contraparte" value={contract.counterparty_cnpj} />
-              )}
-              {contract.object_description && (
-                <DetailRow label="Objeto do contrato" value={contract.object_description} />
               )}
               <DetailRow label="Status" value={<ContractStatusBadge status={contract.status} />} />
               <DetailRow label="Início da vigência" value={formatDate(contract.start_date)} />

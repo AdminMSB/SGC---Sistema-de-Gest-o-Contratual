@@ -22,6 +22,7 @@ const contractSchema = z.object({
     'manutencao',
     'licenca_uso',
     'mao_de_obra',
+    'prestacao_servico_terceiros',
     'servicos_advocaticios',
     'gestao_viagens',
     'seguro_patrimonial',
@@ -30,7 +31,6 @@ const contractSchema = z.object({
     'outro',
     '',
   ]),
-  objectDescription: z.string(),
   startDate: z.string().min(1, 'Informe a data de início.'),
   endDate: z.string(),
   renewalType: z.enum(['automatica', 'manual', 'nenhuma']),
@@ -53,7 +53,6 @@ function parseContractFields(formData: FormData) {
     counterpartyCnpj: String(formData.get('counterpartyCnpj') ?? ''),
     contractType: String(formData.get('contractType') ?? ''),
     contractDetailType: String(formData.get('contractDetailType') ?? ''),
-    objectDescription: String(formData.get('objectDescription') ?? ''),
     startDate: String(formData.get('startDate') ?? ''),
     endDate: String(formData.get('endDate') ?? ''),
     renewalType: String(formData.get('renewalType') ?? ''),
@@ -92,7 +91,6 @@ function parseContractFields(formData: FormData) {
     readjustmentPeriodMonths:
       Number.isFinite(readjustmentPeriodMonths) && readjustmentPeriodMonths >= 0 ? readjustmentPeriodMonths : null,
     counterpartyCnpj: parsed.data.counterpartyCnpj.trim() || null,
-    objectDescription: parsed.data.objectDescription.trim() || null,
   };
 }
 
@@ -131,7 +129,6 @@ export async function createContract(formData: FormData) {
       counterparty_cnpj: fields.counterpartyCnpj,
       contract_type: fields.contractType,
       contract_detail_type: fields.contractDetailType,
-      object_description: fields.objectDescription,
       start_date: fields.startDate,
       end_date: fields.endDate,
       renewal_type: fields.renewalType,
@@ -227,7 +224,6 @@ export async function updateContract(formData: FormData) {
       counterparty_cnpj: fields.counterpartyCnpj,
       contract_type: fields.contractType,
       contract_detail_type: fields.contractDetailType,
-      object_description: fields.objectDescription,
       start_date: fields.startDate,
       end_date: fields.endDate,
       renewal_type: fields.renewalType,

@@ -5,6 +5,7 @@ export type ContractDetailType =
   | 'manutencao'
   | 'licenca_uso'
   | 'mao_de_obra'
+  | 'prestacao_servico_terceiros'
   | 'servicos_advocaticios'
   | 'gestao_viagens'
   | 'seguro_patrimonial'
@@ -40,6 +41,7 @@ export const CONTRACT_DETAIL_TYPE_LABELS: Record<ContractDetailType, string> = {
   manutencao: 'Manutenção',
   licenca_uso: 'Licença de uso/acesso',
   mao_de_obra: 'Mão de obra',
+  prestacao_servico_terceiros: 'Prestação de serviço de terceiros',
   servicos_advocaticios: 'Serviços advocatícios',
   gestao_viagens: 'Gestão de viagens',
   seguro_patrimonial: 'Seguro patrimonial',

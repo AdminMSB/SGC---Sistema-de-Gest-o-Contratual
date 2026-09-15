@@ -12,7 +12,6 @@ import {
   CONTRACT_TYPE_LABELS,
   PAYMENT_FREQUENCY_LABELS,
   READJUSTMENT_INDEX_LABELS,
-  RENEWAL_TYPE_LABELS,
   type ContractDetailType,
   type ContractType,
   type PaymentFrequency,
@@ -27,7 +26,6 @@ const CONTRACT_DETAIL_TYPE_ENTRIES = Object.entries(CONTRACT_DETAIL_TYPE_LABELS)
   string,
 ][];
 const READJUSTMENT_INDEX_ENTRIES = Object.entries(READJUSTMENT_INDEX_LABELS) as [ReadjustmentIndex, string][];
-const RENEWAL_TYPE_ENTRIES = Object.entries(RENEWAL_TYPE_LABELS) as [RenewalType, string][];
 const PAYMENT_FREQUENCY_ENTRIES = Object.entries(PAYMENT_FREQUENCY_LABELS) as [PaymentFrequency, string][];
 
 export interface ContractDefaults {
@@ -43,7 +41,6 @@ export interface ContractDefaults {
   payment_frequency: PaymentFrequency;
   amount_cents: number;
   counterparty_cnpj: string | null;
-  object_description: string | null;
   readjustment_index: ReadjustmentIndex | null;
   readjustment_period_months: number | null;
   notes: string | null;
@@ -62,13 +59,38 @@ function centsToAmountText(cents: number | null | undefined): string {
   return (cents / 100).toFixed(2).replace('.', ',');
 }
 
+function CheckboxField({
+  id,
+  label,
+  checked,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <label htmlFor={id} className="flex items-center gap-2 text-sm">
+      <input
+        id={id}
+        type="checkbox"
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+        className="h-4 w-4 rounded border-border text-primary focus:outline-none focus:ring-2 focus:ring-primary"
+      />
+      {label}
+    </label>
+  );
+}
+
 interface ExtractPdfResponse {
   suggestions: {
     startDate: string | null;
     endDate: string | null;
     amountCents: number | null;
     counterpartyCnpj: string | null;
-    objectDescription: string | null;
+    counterpartyName: string | null;
     contractType: ContractType | null;
     contractDetailType: ContractDetailType | null;
     readjustmentIndex: ReadjustmentIndex | null;
@@ -81,17 +103,21 @@ export function ContratoForm({ mode, contract, triggerLabel, triggerVariant }: C
   const [open, setOpen] = useState(false);
   const [extracting, setExtracting] = useState(false);
   const [extractionNote, setExtractionNote] = useState<string | null>(null);
+  const [autoRenewal, setAutoRenewal] = useState(contract?.renewal_type === 'automatica');
+  const [indeterminateTerm, setIndeterminateTerm] = useState(mode === 'edit' && !contract?.end_date);
+  const titleRef = useRef<HTMLInputElement>(null);
+  const counterpartyRef = useRef<HTMLInputElement>(null);
   const startDateRef = useRef<HTMLInputElement>(null);
   const endDateRef = useRef<HTMLInputElement>(null);
   const amountRef = useRef<HTMLInputElement>(null);
   const cnpjRef = useRef<HTMLInputElement>(null);
-  const objectDescriptionRef = useRef<HTMLTextAreaElement>(null);
   const contractTypeRef = useRef<HTMLSelectElement>(null);
   const contractDetailTypeRef = useRef<HTMLSelectElement>(null);
   const readjustmentIndexRef = useRef<HTMLSelectElement>(null);
   const readjustmentPeriodRef = useRef<HTMLInputElement>(null);
   const action = mode === 'edit' ? updateContract : createContract;
   const title = mode === 'edit' ? 'Editar contrato' : 'Novo contrato';
+  const renewalTypeFallback = contract?.renewal_type === 'manual' ? 'manual' : 'nenhuma';
 
   async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -112,10 +138,17 @@ export function ContratoForm({ mode, contract, triggerLabel, triggerVariant }: C
         return;
       }
 
+      if (suggestions.counterpartyName && counterpartyRef.current && !counterpartyRef.current.value) {
+        counterpartyRef.current.value = suggestions.counterpartyName;
+      }
+      // Por convenção da empresa, o nome do contrato costuma ser o nome da contraparte.
+      if (suggestions.counterpartyName && titleRef.current && !titleRef.current.value) {
+        titleRef.current.value = suggestions.counterpartyName;
+      }
       if (suggestions.startDate && startDateRef.current && !startDateRef.current.value) {
         startDateRef.current.value = suggestions.startDate;
       }
-      if (suggestions.endDate && endDateRef.current && !endDateRef.current.value) {
+      if (suggestions.endDate && endDateRef.current && !endDateRef.current.value && !indeterminateTerm) {
         endDateRef.current.value = suggestions.endDate;
       }
       if (suggestions.amountCents != null && amountRef.current && !amountRef.current.value) {
@@ -124,14 +157,11 @@ export function ContratoForm({ mode, contract, triggerLabel, triggerVariant }: C
       if (suggestions.counterpartyCnpj && cnpjRef.current && !cnpjRef.current.value) {
         cnpjRef.current.value = suggestions.counterpartyCnpj;
       }
-      if (suggestions.objectDescription && objectDescriptionRef.current && !objectDescriptionRef.current.value) {
-        objectDescriptionRef.current.value = suggestions.objectDescription;
-      }
       if (suggestions.readjustmentPeriodMonths != null && readjustmentPeriodRef.current && !readjustmentPeriodRef.current.value) {
         readjustmentPeriodRef.current.value = String(suggestions.readjustmentPeriodMonths);
       }
-      // Categoria/detalhamento/índice de reajuste só são pré-preenchidos ao criar um contrato novo,
-      // para nunca sobrescrever uma escolha já salva ao editar.
+      // Categoria/detalhamento/índice de reajuste/renovação automática só são pré-preenchidos ao
+      // criar um contrato novo, para nunca sobrescrever uma escolha já salva ao editar.
       if (mode === 'create') {
         if (suggestions.contractType && contractTypeRef.current) {
           contractTypeRef.current.value = suggestions.contractType;
@@ -141,6 +171,9 @@ export function ContratoForm({ mode, contract, triggerLabel, triggerVariant }: C
         }
         if (suggestions.readjustmentIndex && readjustmentIndexRef.current) {
           readjustmentIndexRef.current.value = suggestions.readjustmentIndex;
+        }
+        if (highlights?.clauses.includes('Renovação automática')) {
+          setAutoRenewal(true);
         }
       }
 
@@ -157,6 +190,13 @@ export function ContratoForm({ mode, contract, triggerLabel, triggerVariant }: C
     }
   }
 
+  function handleIndeterminateTermChange(checked: boolean) {
+    setIndeterminateTerm(checked);
+    if (checked && endDateRef.current) {
+      endDateRef.current.value = '';
+    }
+  }
+
   return (
     <>
       <Button type="button" variant={triggerVariant ?? 'primary'} onClick={() => setOpen(true)}>
@@ -166,10 +206,12 @@ export function ContratoForm({ mode, contract, triggerLabel, triggerVariant }: C
       <Dialog open={open} onClose={() => setOpen(false)} title={title} className="max-w-2xl">
         <form action={action} onSubmit={() => setOpen(false)} className="flex flex-col gap-4">
           {mode === 'edit' && contract ? <input type="hidden" name="id" value={contract.id} /> : null}
+          <input type="hidden" name="renewalType" value={autoRenewal ? 'automatica' : renewalTypeFallback} />
 
           <div>
-            <Label htmlFor={`title-${mode}`}>Nome/objeto do contrato</Label>
+            <Label htmlFor={`title-${mode}`}>Nome do contrato</Label>
             <Input
+              ref={titleRef}
               id={`title-${mode}`}
               name="title"
               type="text"
@@ -179,48 +221,19 @@ export function ContratoForm({ mode, contract, triggerLabel, triggerVariant }: C
             />
           </div>
 
-          <div>
-            <Label htmlFor={`counterparty-${mode}`}>Contraparte</Label>
-            <Input
-              id={`counterparty-${mode}`}
-              name="counterparty"
-              type="text"
-              placeholder="Fornecedor, locador ou cliente"
-              defaultValue={contract?.counterparty ?? ''}
-              required
-            />
-          </div>
-
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor={`counterpartyCnpj-${mode}`}>CNPJ da contraparte</Label>
+              <Label htmlFor={`counterparty-${mode}`}>Contraparte</Label>
               <Input
-                ref={cnpjRef}
-                id={`counterpartyCnpj-${mode}`}
-                name="counterpartyCnpj"
+                ref={counterpartyRef}
+                id={`counterparty-${mode}`}
+                name="counterparty"
                 type="text"
-                placeholder="00.000.000/0000-00"
-                defaultValue={contract?.counterparty_cnpj ?? ''}
+                placeholder="Fornecedor, locador ou cliente"
+                defaultValue={contract?.counterparty ?? ''}
+                required
               />
             </div>
-            <div>
-              <Label htmlFor={`paymentFrequency-${mode}`}>Frequência de pagamento</Label>
-              <Select
-                id={`paymentFrequency-${mode}`}
-                name="paymentFrequency"
-                defaultValue={contract?.payment_frequency ?? 'mensal'}
-                required
-              >
-                {PAYMENT_FREQUENCY_ENTRIES.map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </Select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor={`contractType-${mode}`}>Categoria</Label>
               <Select
@@ -236,6 +249,20 @@ export function ContratoForm({ mode, contract, triggerLabel, triggerVariant }: C
                   </option>
                 ))}
               </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor={`counterpartyCnpj-${mode}`}>CNPJ da contraparte</Label>
+              <Input
+                ref={cnpjRef}
+                id={`counterpartyCnpj-${mode}`}
+                name="counterpartyCnpj"
+                type="text"
+                placeholder="00.000.000/0000-00"
+                defaultValue={contract?.counterparty_cnpj ?? ''}
+              />
             </div>
             <div>
               <Label htmlFor={`contractDetailType-${mode}`}>Detalhamento</Label>
@@ -253,18 +280,6 @@ export function ContratoForm({ mode, contract, triggerLabel, triggerVariant }: C
                 ))}
               </Select>
             </div>
-          </div>
-
-          <div>
-            <Label htmlFor={`objectDescription-${mode}`}>Objeto do contrato</Label>
-            <Textarea
-              ref={objectDescriptionRef}
-              id={`objectDescription-${mode}`}
-              name="objectDescription"
-              defaultValue={contract?.object_description ?? ''}
-              rows={3}
-              placeholder="Do que trata o contrato (pode ser pré-preenchido a partir do PDF)."
-            />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -287,22 +302,27 @@ export function ContratoForm({ mode, contract, triggerLabel, triggerVariant }: C
                 name="endDate"
                 type="date"
                 defaultValue={contract?.end_date?.slice(0, 10) ?? ''}
+                disabled={indeterminateTerm}
               />
-              <p className="mt-1 text-xs text-muted-foreground">Deixe em branco para prazo indeterminado.</p>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor={`renewalType-${mode}`}>Renovação</Label>
-              <Select id={`renewalType-${mode}`} name="renewalType" defaultValue={contract?.renewal_type ?? 'nenhuma'} required>
-                {RENEWAL_TYPE_ENTRIES.map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </Select>
-            </div>
+            <CheckboxField
+              id={`indeterminateTerm-${mode}`}
+              label="Vigência indeterminada"
+              checked={indeterminateTerm}
+              onChange={handleIndeterminateTermChange}
+            />
+            <CheckboxField
+              id={`autoRenewal-${mode}`}
+              label="Renovação automática"
+              checked={autoRenewal}
+              onChange={setAutoRenewal}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor={`renewalNoticeDays-${mode}`}>Avisar com quantos dias de antecedência</Label>
               <Input
@@ -313,6 +333,21 @@ export function ContratoForm({ mode, contract, triggerLabel, triggerVariant }: C
                 defaultValue={contract?.renewal_notice_days ?? 30}
                 required
               />
+            </div>
+            <div>
+              <Label htmlFor={`paymentFrequency-${mode}`}>Frequência de pagamento</Label>
+              <Select
+                id={`paymentFrequency-${mode}`}
+                name="paymentFrequency"
+                defaultValue={contract?.payment_frequency ?? 'mensal'}
+                required
+              >
+                {PAYMENT_FREQUENCY_ENTRIES.map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </Select>
             </div>
           </div>
 
@@ -377,7 +412,7 @@ export function ContratoForm({ mode, contract, triggerLabel, triggerVariant }: C
             <Input id={`file-${mode}`} name="file" type="file" accept="application/pdf" onChange={handleFileChange} />
             <p className="mt-1 text-xs text-muted-foreground">
               PDF, até 10MB. Ao selecionar o arquivo, tentamos ler início/fim da vigência, valor,
-              CNPJ da contraparte, objeto, categoria e reajuste para pré-preencher os campos acima.
+              CNPJ e nome da contraparte, categoria e reajuste para pré-preencher os campos acima.
               {mode === 'edit' && contract?.file_path ? ' Envie um novo arquivo para substituir o atual.' : ''}
             </p>
             {extracting && <p className="mt-1 text-xs text-muted-foreground">Lendo o PDF…</p>}

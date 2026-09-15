@@ -4,8 +4,11 @@ import { deriveSuggestions, extractHighlightsFromText } from '@/lib/pdf-extract'
 const SAMPLE_CONTRACT_TEXT = `
 CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE CONSULTORIA
 
-CONTRATANTE, inscrita no CNPJ n. 06.167.295/0001-71, e CONTRATADO, inscrito no CNPJ n.
-98.765.432/0001-10, têm entre si justo e acordado o presente contrato.
+Pelo presente instrumento particular, de um lado:
+(a) MSB MEDICAL SYSTEM BRASIL LTDA, inscrita no CNPJ n. 06.167.295/0001-71, ora denominada
+CONTRATANTE; e, de outro lado,
+(b) FORNECEDOR EXEMPLO LTDA, inscrito no CNPJ n. 98.765.432/0001-10, ora denominada
+CONTRATADO, têm entre si justo e acordado o presente contrato.
 
 CLÁUSULA PRIMEIRA – DO OBJETO
 1.1 O presente Contrato tem por objeto a prestação de serviços de consultoria comercial e
@@ -17,7 +20,9 @@ CLÁUSULA QUINTA - DA REMUNERAÇÃO
 acordo entre as partes, após 01 (um) ano de vigência deste Contrato.
 
 CLÁUSULA SEXTA - DA RESCISÃO
-A violação das obrigações implica a rescisão automática do presente contrato.
+Este Contrato poderá ser resolvido mediante comunicação por escrito à outra parte, com
+prazo de 8 dias de antecedência, na hipótese de descumprimento contratual. A violação das
+obrigações implica a rescisão automática do presente contrato.
 
 CLÁUSULA SÉTIMA - DO SIGILO
 As partes se comprometem a manter sigilo sobre informações confidenciais.
@@ -72,6 +77,20 @@ describe('extractHighlightsFromText', () => {
     });
   });
 
+  it('ignora "prazo de X dias de antecedência" (aviso de rescisão) e usa o prazo de vigência', () => {
+    const text =
+      'Poderá ser rescindido com prazo de 8 dias de antecedência. ' +
+      'Este Contrato vigorará pelo prazo de 01 (um) ano a contar da assinatura.';
+    expect(extractHighlightsFromText(text).duration).toEqual({ amount: 12, unit: 'meses' });
+  });
+
+  it('extrai as razões sociais mencionadas no contrato', () => {
+    const { companyNames } = extractHighlightsFromText(SAMPLE_CONTRACT_TEXT);
+    expect(companyNames).toEqual(
+      expect.arrayContaining(['MSB MEDICAL SYSTEM BRASIL LTDA', 'FORNECEDOR EXEMPLO LTDA']),
+    );
+  });
+
   it('extrai o período de reajuste (meses) a partir do texto próximo de "reajuste"', () => {
     expect(extractHighlightsFromText(SAMPLE_CONTRACT_TEXT).readjustmentPeriodMonths).toBe(12);
   });
@@ -108,6 +127,9 @@ describe('extractHighlightsFromText', () => {
     expect(extractHighlightsFromText('Contrato de seguro de auto da frota.').detailTypeGuess).toBe(
       'seguro_auto',
     );
+    expect(
+      extractHighlightsFromText('Contrato de prestação de serviço de terceiros para limpeza.').detailTypeGuess,
+    ).toBe('prestacao_servico_terceiros');
     expect(extractHighlightsFromText(SAMPLE_CONTRACT_TEXT).detailTypeGuess).toBeNull();
   });
 
@@ -134,6 +156,7 @@ describe('extractHighlightsFromText', () => {
       dates: [],
       amountsCents: [],
       cnpjs: [],
+      companyNames: [],
       duration: null,
       readjustmentIndex: null,
       readjustmentPeriodMonths: null,
@@ -173,6 +196,12 @@ describe('deriveSuggestions', () => {
     expect(suggestions.counterpartyCnpj).toBe('98.765.432/0001-10');
   });
 
+  it('sugere o nome da contraparte excluindo a própria empresa (MSB)', () => {
+    const highlights = extractHighlightsFromText(SAMPLE_CONTRACT_TEXT);
+    const suggestions = deriveSuggestions(SAMPLE_CONTRACT_TEXT, highlights);
+    expect(suggestions.counterpartyName).toBe('FORNECEDOR EXEMPLO LTDA');
+  });
+
   it('usa a última data encontrada como fim quando há múltiplas datas e nenhum prazo explícito', () => {
     const text = 'Início em 01/02/2026. Término em 01/02/2027.';
     const highlights = extractHighlightsFromText(text);
@@ -189,7 +218,7 @@ describe('deriveSuggestions', () => {
       endDate: null,
       amountCents: null,
       counterpartyCnpj: null,
-      objectDescription: null,
+      counterpartyName: null,
       contractType: null,
       contractDetailType: null,
       readjustmentIndex: null,

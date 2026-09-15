@@ -6,9 +6,10 @@
 
 import type { ContractDetailType, ContractType, ReadjustmentIndex } from '@/types/domain';
 
-// CNPJ da própria empresa (sempre a CONTRATANTE) — usado para não sugerir o próprio CNPJ como
-// se fosse o da contraparte quando o contrato tem mais de um CNPJ mencionado.
+// CNPJ/nome da própria empresa (sempre a CONTRATANTE) — usado para não sugerir os próprios
+// dados como se fossem os da contraparte quando o contrato menciona as duas partes.
 const OWN_COMPANY_CNPJS = ['06.167.295/0001-71'];
+const OWN_COMPANY_NAME_PATTERN = /MSB/i;
 
 const MONTHS_PT: Record<string, string> = {
   janeiro: '01',
@@ -48,6 +49,7 @@ const CONTRACT_DETAIL_TYPE_KEYWORDS: [RegExp, ContractDetailType][] = [
   [/manuten(ç|c)[aã]o/i, 'manutencao'],
   [/licen[çc]a de (uso|acesso)/i, 'licenca_uso'],
   [/m[aã]o[- ]de[- ]obra/i, 'mao_de_obra'],
+  [/presta[çc][aã]o de servi[çc]os?\s+de\s+terceiros/i, 'prestacao_servico_terceiros'],
   [/advocat[íi]ci[ao]s?/i, 'servicos_advocaticios'],
   [/gest[aã]o de viagens|ag[êe]ncia de viagens/i, 'gestao_viagens'],
   [/seguro\s+patrimonial/i, 'seguro_patrimonial'],
@@ -70,6 +72,7 @@ export interface ExtractedHighlights {
   dates: string[];
   amountsCents: number[];
   cnpjs: string[];
+  companyNames: string[];
   duration: ExtractedDuration | null;
   readjustmentIndex: ReadjustmentIndex | null;
   readjustmentPeriodMonths: number | null;
@@ -84,7 +87,7 @@ export interface ExtractedSuggestions {
   endDate: string | null;
   amountCents: number | null;
   counterpartyCnpj: string | null;
-  objectDescription: string | null;
+  counterpartyName: string | null;
   contractType: ContractType | null;
   contractDetailType: ContractDetailType | null;
   readjustmentIndex: ReadjustmentIndex | null;
@@ -136,10 +139,33 @@ function extractCnpjs(text: string): string[] {
   return Array.from(new Set(text.match(/\b\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}\b/g) ?? []));
 }
 
-/** Prazo de vigência: aceita dias, meses ou anos ("prazo de 01 (um) ano", "prazo de 365 dias"). */
+/** Razões sociais mencionadas (heurística: sequência em maiúsculas terminada em LTDA/S.A./ME/EPP/EIRELI). */
+function extractCompanyNames(text: string): string[] {
+  // Limita a quantidade de palavras antes do sufixo societário para não "comer" o título do
+  // documento inteiro quando ele também está em maiúsculas (ex.: "CONTRATO DE PRESTAÇÃO...").
+  const regex = /\b([A-ZÀ-Ý][A-ZÀ-Ý0-9À-Ý.,'-]*(?:\s+[A-ZÀ-Ý0-9À-Ý.,'-]+){0,7}\s+(?:LTDA\.?|S\/A|S\.A\.|EIRELI|EPP|ME))\b/g;
+  return Array.from(new Set(Array.from(text.matchAll(regex), (m) => m[1]!.replace(/[.,]$/, '').trim())));
+}
+
+const DURATION_UNIT_PATTERN = '(\\d{1,4})\\s*(?:\\([a-zç]+\\))?\\s*(dias?|anos?|m[eê]s(?:es)?)';
+
+/**
+ * Prazo de vigência: aceita dias, meses ou anos ("prazo de 01 (um) ano", "prazo de 365 dias").
+ * Prioriza um prazo perto da palavra "vigência"/"vigorar" — contratos costumam ter outras
+ * menções a "prazo de X dias" que não são a vigência (ex.: "8 dias de antecedência" para
+ * rescisão), então só cai no padrão genérico se não achar nada perto de "vigência".
+ */
 function extractDuration(text: string): ExtractedDuration | null {
-  const regex = /\bprazo\s+de\s+(\d{1,4})\s*(?:\([a-zç]+\))?\s*(dias?|anos?|m[eê]s(?:es)?)\b/i;
-  const match = text.match(regex);
+  const nearVigencia = text.match(
+    new RegExp(
+      `(?:prazo\\s+de\\s+vig[eê]ncia\\s+de|vigora(?:r[aá]|d[ao])[^.]{0,100}?prazo\\s+de)\\s*${DURATION_UNIT_PATTERN}\\b`,
+      'i',
+    ),
+  );
+  const generic = nearVigencia
+    ? null
+    : text.match(new RegExp(`\\bprazo\\s+de\\s+${DURATION_UNIT_PATTERN}\\b(?!\\s+de\\s+antecedência)`, 'i'));
+  const match = nearVigencia ?? generic;
   if (!match) return null;
   const amount = Number.parseInt(match[1]!, 10);
   const unitText = match[2]!.toLowerCase();
@@ -192,6 +218,7 @@ export function extractHighlightsFromText(rawText: string): ExtractedHighlights 
     dates: Array.from(new Set([...extractDatesTextual(text), ...extractDatesNumeric(text)])).sort(),
     amountsCents: Array.from(new Set(extractAmounts(text))).sort((a, b) => b - a),
     cnpjs,
+    companyNames: extractCompanyNames(text),
     duration: extractDuration(text),
     readjustmentIndex: guessReadjustmentIndex(text),
     readjustmentPeriodMonths: extractReadjustmentPeriodMonths(text),
@@ -224,6 +251,11 @@ function findCounterpartyCnpj(cnpjs: string[]): string | null {
   return candidates[0] ?? null;
 }
 
+function findCounterpartyName(companyNames: string[]): string | null {
+  const candidates = companyNames.filter((name) => !OWN_COMPANY_NAME_PATTERN.test(name));
+  return candidates[0] ?? null;
+}
+
 /** Sugestões para pré-preencher o formulário; nunca sobrescreve campos já preenchidos pelo usuário. */
 export function deriveSuggestions(rawText: string, highlights: ExtractedHighlights): ExtractedSuggestions {
   const startDate = highlights.dates[0] ?? null;
@@ -238,7 +270,7 @@ export function deriveSuggestions(rawText: string, highlights: ExtractedHighligh
     endDate,
     amountCents: findMonthlyAmountCents(rawText, highlights.amountsCents),
     counterpartyCnpj: findCounterpartyCnpj(highlights.cnpjs),
-    objectDescription: highlights.objectSummary,
+    counterpartyName: findCounterpartyName(highlights.companyNames),
     contractType: highlights.contractTypeGuess,
     contractDetailType: highlights.detailTypeGuess,
     readjustmentIndex: highlights.readjustmentIndex,
