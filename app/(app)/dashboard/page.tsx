@@ -18,8 +18,8 @@ function IndicatorCard({ title, value }: { title: string; value: string }) {
   );
 }
 
-function sumAmountCents(rows: { total_amount_cents: number }[] | null): number {
-  return (rows ?? []).reduce((total, row) => total + row.total_amount_cents, 0);
+function sumAmountCents(rows: { total_amount_cents: number | null }[] | null): number {
+  return (rows ?? []).reduce((total, row) => total + (row.total_amount_cents ?? 0), 0);
 }
 
 export default async function DashboardPage() {

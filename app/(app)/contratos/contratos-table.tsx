@@ -21,7 +21,8 @@ export interface ContractListItem {
   contract_type: ContractType;
   status: ContractStatus;
   end_date: string | null;
-  total_amount_cents: number;
+  total_amount_cents: number | null;
+  is_variable_value: boolean;
 }
 
 const STATUS_ENTRIES = Object.entries(CONTRACT_STATUS_LABELS) as [ContractStatus, string][];
@@ -107,7 +108,7 @@ export function ContratosTable({ rows }: { rows: ContractListItem[] }) {
               </TableCell>
               <TableCell>{CONTRACT_TYPE_LABELS[row.contract_type]}</TableCell>
               <TableCell>{row.end_date ? formatDate(row.end_date) : 'Indeterminado'}</TableCell>
-              <TableCell>{formatCurrencyCents(row.total_amount_cents)}</TableCell>
+              <TableCell>{row.is_variable_value ? 'Variável' : formatCurrencyCents(row.total_amount_cents ?? 0)}</TableCell>
               <TableCell>
                 <ContractStatusBadge status={row.status} />
               </TableCell>

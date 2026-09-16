@@ -1,0 +1,105 @@
+import { NextResponse } from 'next/server';
+import { createAdminSupabaseClient } from '@/lib/supabase/admin';
+import { computeNextReadjustmentDate, isWithinNoticeWindow } from '@/lib/contract-alerts';
+import { sendMail } from '@/lib/mailer';
+import { formatDate } from '@/lib/format';
+
+export const dynamic = 'force-dynamic';
+
+/**
+ * Roda uma vez por dia (ver vercel.json) e envia e-mail para `alert_emails` quando um contrato
+ * entra no prazo de aviso prévio de vencimento, ou se aproxima da data de reajuste. Evita
+ * reenviar o mesmo alerta repetidas vezes usando `contract_alert_log` como registro de controle
+ * (um alerta não é reenviado se já houver um log do mesmo tipo nos últimos `renewal_notice_days`
+ * dias para aquele contrato).
+ */
+export async function GET(request: Request) {
+  const authHeader = request.headers.get('authorization');
+  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 });
+  }
+
+  const supabase = createAdminSupabaseClient();
+  const today = new Date();
+  const sent: { contractId: string; type: 'vencimento' | 'reajuste' }[] = [];
+  const failed: { contractId: string; type: 'vencimento' | 'reajuste'; error: string }[] = [];
+
+  async function alreadySent(contractId: string, alertType: 'vencimento' | 'reajuste', windowDays: number) {
+    const since = new Date(today.getTime() - windowDays * 24 * 60 * 60 * 1000).toISOString();
+    const { data } = await supabase
+      .from('contract_alert_log')
+      .select('id')
+      .eq('contract_id', contractId)
+      .eq('alert_type', alertType)
+      .gte('sent_at', since)
+      .limit(1);
+    return (data?.length ?? 0) > 0;
+  }
+
+  async function notify(
+    contractId: string,
+    alertType: 'vencimento' | 'reajuste',
+    recipients: string[],
+    subject: string,
+    html: string,
+  ) {
+    try {
+      await sendMail({ to: recipients, subject, html });
+      await supabase.from('contract_alert_log').insert({ contract_id: contractId, alert_type: alertType });
+      sent.push({ contractId, type: alertType });
+    } catch (error) {
+      failed.push({ contractId, type: alertType, error: error instanceof Error ? error.message : String(error) });
+    }
+  }
+
+  // Vencimento: reaproveita a view contracts_expiring (já filtra status ativo e a janela de aviso).
+  const { data: expiring } = await supabase
+    .from('contracts_expiring')
+    .select('id, title, end_date, renewal_notice_days, alert_emails, days_until_expiration');
+
+  for (const contract of expiring ?? []) {
+    if (!contract.alert_emails || !contract.end_date) continue;
+    if (await alreadySent(contract.id, 'vencimento', contract.renewal_notice_days)) continue;
+
+    const recipients = contract.alert_emails.split(',').map((email) => email.trim()).filter(Boolean);
+    if (recipients.length === 0) continue;
+
+    await notify(
+      contract.id,
+      'vencimento',
+      recipients,
+      `Contrato "${contract.title}" vence em breve`,
+      `<p>O contrato <strong>${contract.title}</strong> tem vigência até <strong>${formatDate(contract.end_date)}</strong> (${contract.days_until_expiration} dia(s)).</p>`,
+    );
+  }
+
+  // Reajuste: precisa ser calculado (não existe uma view pronta, já que depende do período de
+  // reajuste em meses a partir do início da vigência).
+  const { data: readjustable } = await supabase
+    .from('contracts')
+    .select('id, title, start_date, renewal_notice_days, readjustment_period_months, alert_emails')
+    .eq('status', 'ativo')
+    .not('readjustment_period_months', 'is', null)
+    .not('alert_emails', 'is', null);
+
+  for (const contract of readjustable ?? []) {
+    if (!contract.alert_emails || !contract.readjustment_period_months) continue;
+
+    const nextDate = computeNextReadjustmentDate(contract.start_date, contract.readjustment_period_months, today);
+    if (!isWithinNoticeWindow(nextDate, contract.renewal_notice_days, today)) continue;
+    if (await alreadySent(contract.id, 'reajuste', contract.renewal_notice_days)) continue;
+
+    const recipients = contract.alert_emails.split(',').map((email) => email.trim()).filter(Boolean);
+    if (recipients.length === 0) continue;
+
+    await notify(
+      contract.id,
+      'reajuste',
+      recipients,
+      `Contrato "${contract.title}" se aproxima da data de reajuste`,
+      `<p>O contrato <strong>${contract.title}</strong> tem reajuste previsto para <strong>${formatDate(nextDate)}</strong>.</p>`,
+    );
+  }
+
+  return NextResponse.json({ sent, failed });
+}

@@ -31,9 +31,9 @@ const contractSchema = z.object({
   ]),
   startDate: z.string().min(1, 'Informe a data de início.'),
   endDate: z.string(),
-  renewalType: z.enum(['automatica', 'manual', 'nenhuma']),
   renewalNoticeDays: z.string(),
-  amount: z.string().min(1, 'Informe o valor do contrato.'),
+  amount: z.string(),
+  isVariableValue: z.string(),
   readjustmentIndex: z.enum(['igpm', 'ipca', 'inpc', 'outro', '']),
   readjustmentPeriodMonths: z.string(),
   hasDistrato: z.string(),
@@ -43,11 +43,7 @@ const contractSchema = z.object({
   internalCode: z.string(),
   department: z.string(),
   internalManagerId: z.string(),
-  signatureDate: z.string(),
   terminationReason: z.string(),
-  jurisdictionForum: z.string(),
-  confidentialityPeriodMonths: z.string(),
-  approvedBy: z.string(),
   alertEmails: z.string(),
   notes: z.string(),
 });
@@ -66,9 +62,9 @@ function parseContractFields(formData: FormData) {
     contractDetailType: String(formData.get('contractDetailType') ?? ''),
     startDate: String(formData.get('startDate') ?? ''),
     endDate: String(formData.get('endDate') ?? ''),
-    renewalType: String(formData.get('renewalType') ?? ''),
     renewalNoticeDays: String(formData.get('renewalNoticeDays') ?? ''),
     amount: String(formData.get('amount') ?? ''),
+    isVariableValue: String(formData.get('isVariableValue') ?? ''),
     readjustmentIndex: String(formData.get('readjustmentIndex') ?? ''),
     readjustmentPeriodMonths: String(formData.get('readjustmentPeriodMonths') ?? ''),
     hasDistrato: String(formData.get('hasDistrato') ?? ''),
@@ -78,11 +74,7 @@ function parseContractFields(formData: FormData) {
     internalCode: String(formData.get('internalCode') ?? ''),
     department: String(formData.get('department') ?? ''),
     internalManagerId: String(formData.get('internalManagerId') ?? ''),
-    signatureDate: String(formData.get('signatureDate') ?? ''),
     terminationReason: String(formData.get('terminationReason') ?? ''),
-    jurisdictionForum: String(formData.get('jurisdictionForum') ?? ''),
-    confidentialityPeriodMonths: String(formData.get('confidentialityPeriodMonths') ?? ''),
-    approvedBy: String(formData.get('approvedBy') ?? ''),
     alertEmails: String(formData.get('alertEmails') ?? ''),
     notes: String(formData.get('notes') ?? ''),
   });
@@ -91,9 +83,13 @@ function parseContractFields(formData: FormData) {
     fail(parsed.error.issues[0]?.message ?? 'Dados inválidos.');
   }
 
-  const amountCents = parseCurrencyToCents(parsed.data.amount);
-  if (amountCents <= 0) {
-    fail('Informe um valor válido maior que zero.');
+  const isVariableValue = parsed.data.isVariableValue === 'on';
+  let amountCents: number | null = null;
+  if (!isVariableValue) {
+    amountCents = parseCurrencyToCents(parsed.data.amount);
+    if (amountCents <= 0) {
+      fail('Informe um valor válido maior que zero, ou marque "Valor variável".');
+    }
   }
 
   const endDate = parsed.data.endDate.trim() || null;
@@ -103,7 +99,6 @@ function parseContractFields(formData: FormData) {
 
   const renewalNoticeDays = Number.parseInt(parsed.data.renewalNoticeDays, 10);
   const readjustmentPeriodMonths = Number.parseInt(parsed.data.readjustmentPeriodMonths, 10);
-  const confidentialityPeriodMonths = Number.parseInt(parsed.data.confidentialityPeriodMonths, 10);
 
   const contactEmail = parsed.data.contactEmail.trim();
   if (contactEmail && !EMAIL_PATTERN.test(contactEmail)) {
@@ -123,6 +118,7 @@ function parseContractFields(formData: FormData) {
     ...parsed.data,
     endDate,
     amountCents,
+    isVariableValue,
     renewalNoticeDays: Number.isFinite(renewalNoticeDays) && renewalNoticeDays >= 0 ? renewalNoticeDays : 30,
     contractDetailType: parsed.data.contractDetailType || null,
     readjustmentIndex: parsed.data.readjustmentIndex || null,
@@ -136,14 +132,7 @@ function parseContractFields(formData: FormData) {
     internalCode: parsed.data.internalCode.trim() || null,
     department: parsed.data.department.trim() || null,
     internalManagerId: parsed.data.internalManagerId.trim() || null,
-    signatureDate: parsed.data.signatureDate.trim() || null,
     terminationReason: parsed.data.terminationReason.trim() || null,
-    jurisdictionForum: parsed.data.jurisdictionForum.trim() || null,
-    confidentialityPeriodMonths:
-      Number.isFinite(confidentialityPeriodMonths) && confidentialityPeriodMonths >= 0
-        ? confidentialityPeriodMonths
-        : null,
-    approvedBy: parsed.data.approvedBy.trim() || null,
     alertEmails: alertEmails.length > 0 ? alertEmails.join(', ') : null,
   };
 }
@@ -186,9 +175,9 @@ export async function createContract(formData: FormData) {
       contract_detail_type: fields.contractDetailType,
       start_date: fields.startDate,
       end_date: fields.endDate,
-      renewal_type: fields.renewalType,
       renewal_notice_days: fields.renewalNoticeDays,
       total_amount_cents: fields.amountCents,
+      is_variable_value: fields.isVariableValue,
       readjustment_index: fields.readjustmentIndex,
       readjustment_period_months: fields.readjustmentPeriodMonths,
       has_distrato: fields.hasDistrato,
@@ -198,11 +187,7 @@ export async function createContract(formData: FormData) {
       internal_code: fields.internalCode,
       department: fields.department,
       internal_manager_id: fields.internalManagerId,
-      signature_date: fields.signatureDate,
       termination_reason: fields.terminationReason,
-      jurisdiction_forum: fields.jurisdictionForum,
-      confidentiality_period_months: fields.confidentialityPeriodMonths,
-      approved_by: fields.approvedBy,
       alert_emails: fields.alertEmails,
       notes: fields.notes || null,
       created_by: profile.id,
@@ -305,9 +290,9 @@ export async function updateContract(formData: FormData) {
       contract_detail_type: fields.contractDetailType,
       start_date: fields.startDate,
       end_date: fields.endDate,
-      renewal_type: fields.renewalType,
       renewal_notice_days: fields.renewalNoticeDays,
       total_amount_cents: fields.amountCents,
+      is_variable_value: fields.isVariableValue,
       readjustment_index: fields.readjustmentIndex,
       readjustment_period_months: fields.readjustmentPeriodMonths,
       has_distrato: fields.hasDistrato,
@@ -317,11 +302,7 @@ export async function updateContract(formData: FormData) {
       internal_code: fields.internalCode,
       department: fields.department,
       internal_manager_id: fields.internalManagerId,
-      signature_date: fields.signatureDate,
       termination_reason: fields.terminationReason,
-      jurisdiction_forum: fields.jurisdictionForum,
-      confidentiality_period_months: fields.confidentialityPeriodMonths,
-      approved_by: fields.approvedBy,
       alert_emails: fields.alertEmails,
       ...(file ? { extracted_highlights: extractedHighlights } : {}),
       notes: fields.notes || null,

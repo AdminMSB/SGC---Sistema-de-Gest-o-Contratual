@@ -20,7 +20,6 @@ import {
   CONTRACT_STATUS_LABELS,
   CONTRACT_TYPE_LABELS,
   READJUSTMENT_INDEX_LABELS,
-  RENEWAL_TYPE_LABELS,
 } from '@/types/domain';
 import { ContratoForm } from '../contrato-form';
 import {
@@ -110,19 +109,21 @@ export default async function ContratoDetalhePage({
   const { data: contract } = await supabase.from('contracts').select('*').eq('id', params.id).single();
   if (!contract) notFound();
 
-  const [{ data: managers }, { data: amendments }, { data: statusHistory }] = await Promise.all([
-    supabase.from('profiles').select('id, full_name').order('full_name'),
-    supabase
-      .from('contract_amendments')
-      .select('*')
-      .eq('contract_id', contract.id)
-      .order('amendment_date', { ascending: false }),
-    supabase
-      .from('contract_status_history')
-      .select('*')
-      .eq('contract_id', contract.id)
-      .order('changed_at', { ascending: false }),
-  ]);
+  const [{ data: managers }, { data: profiles }, { data: amendments }, { data: statusHistory }] =
+    await Promise.all([
+      supabase.from('contract_managers').select('id, full_name').order('full_name'),
+      supabase.from('profiles').select('id, full_name').order('full_name'),
+      supabase
+        .from('contract_amendments')
+        .select('*')
+        .eq('contract_id', contract.id)
+        .order('amendment_date', { ascending: false }),
+      supabase
+        .from('contract_status_history')
+        .select('*')
+        .eq('contract_id', contract.id)
+        .order('changed_at', { ascending: false }),
+    ]);
 
   let fileUrl: string | null = null;
   if (contract.file_path) {
@@ -138,7 +139,9 @@ export default async function ContratoDetalhePage({
     distratoFileUrl = signed?.signedUrl ?? null;
   }
 
-  const profileNameById = new Map((managers ?? []).map((manager) => [manager.id, manager.full_name]));
+  const managerNameById = new Map((managers ?? []).map((manager) => [manager.id, manager.full_name]));
+  const profileNameById = new Map((profiles ?? []).map((profile) => [profile.id, profile.full_name]));
+  const amendmentCount = (amendments ?? []).length;
 
   const amendmentFileUrls = new Map<string, string>();
   for (const amendment of amendments ?? []) {
@@ -183,8 +186,8 @@ export default async function ContratoDetalhePage({
           <div className="flex flex-col">
             {contract.internal_code && <DetailRow label="Código interno" value={contract.internal_code} />}
             {contract.department && <DetailRow label="Departamento" value={contract.department} />}
-            {contract.internal_manager_id && profileNameById.get(contract.internal_manager_id) && (
-              <DetailRow label="Gestor interno" value={profileNameById.get(contract.internal_manager_id)!} />
+            {contract.internal_manager_id && managerNameById.get(contract.internal_manager_id) && (
+              <DetailRow label="Gestor do contrato" value={managerNameById.get(contract.internal_manager_id)!} />
             )}
             <DetailRow label="Categoria" value={CONTRACT_TYPE_LABELS[contract.contract_type]} />
             {contract.contract_detail_type && (
@@ -200,17 +203,16 @@ export default async function ContratoDetalhePage({
             {contract.contact_phone && <DetailRow label="Telefone de contato" value={contract.contact_phone} />}
             {contract.alert_emails && <DetailRow label="E-mails para alerta" value={contract.alert_emails} />}
             <DetailRow label="Status" value={<ContractStatusBadge status={contract.status} />} />
-            {contract.signature_date && (
-              <DetailRow label="Data de assinatura" value={formatDate(contract.signature_date)} />
-            )}
             <DetailRow label="Início da vigência" value={formatDate(contract.start_date)} />
             <DetailRow
               label="Fim da vigência"
               value={contract.end_date ? formatDate(contract.end_date) : 'Indeterminado'}
             />
-            <DetailRow label="Renovação" value={RENEWAL_TYPE_LABELS[contract.renewal_type]} />
-            <DetailRow label="Aviso de vencimento" value={`${contract.renewal_notice_days} dia(s) de antecedência`} />
-            <DetailRow label="Valor total do contrato" value={formatCurrencyCents(contract.total_amount_cents)} />
+            <DetailRow label="Aviso prévio" value={`${contract.renewal_notice_days} dia(s)`} />
+            <DetailRow
+              label="Valor total do contrato"
+              value={contract.is_variable_value ? 'Valor variável' : formatCurrencyCents(contract.total_amount_cents ?? 0)}
+            />
             {contract.readjustment_index && (
               <DetailRow
                 label="Reajuste"
@@ -221,16 +223,6 @@ export default async function ContratoDetalhePage({
                 }
               />
             )}
-            {contract.jurisdiction_forum && (
-              <DetailRow label="Foro de eleição" value={contract.jurisdiction_forum} />
-            )}
-            {contract.confidentiality_period_months != null && (
-              <DetailRow
-                label="Sigilo pós-encerramento"
-                value={`${contract.confidentiality_period_months} mês(es)`}
-              />
-            )}
-            {contract.approved_by && <DetailRow label="Aprovado por" value={contract.approved_by} />}
             {contract.termination_reason && (
               <DetailRow label="Motivo de encerramento/rescisão" value={contract.termination_reason} />
             )}
@@ -262,6 +254,10 @@ export default async function ContratoDetalhePage({
                   'Não'
                 )
               }
+            />
+            <DetailRow
+              label="Aditivo"
+              value={amendmentCount > 0 ? `Sim (${amendmentCount})` : 'Não'}
             />
           </div>
 

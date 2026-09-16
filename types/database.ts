@@ -7,7 +7,6 @@ import type {
   ContractStatus,
   ContractType,
   ReadjustmentIndex,
-  RenewalType,
   Role,
 } from './domain';
 import type { ExtractedHighlights } from '@/lib/pdf-extract';
@@ -31,6 +30,20 @@ export interface Database {
         Update: Partial<Database['public']['Tables']['profiles']['Insert']>;
         Relationships: [];
       };
+      contract_managers: {
+        Row: {
+          id: string;
+          full_name: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          full_name: string;
+          created_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['contract_managers']['Insert']>;
+        Relationships: [];
+      };
       contracts: {
         Row: {
           id: string;
@@ -41,9 +54,9 @@ export interface Database {
           status: ContractStatus;
           start_date: string;
           end_date: string | null;
-          renewal_type: RenewalType;
           renewal_notice_days: number;
-          total_amount_cents: number;
+          total_amount_cents: number | null;
+          is_variable_value: boolean;
           counterparty_cnpj: string | null;
           readjustment_index: ReadjustmentIndex | null;
           readjustment_period_months: number | null;
@@ -55,11 +68,7 @@ export interface Database {
           internal_code: string | null;
           department: string | null;
           internal_manager_id: string | null;
-          signature_date: string | null;
           termination_reason: string | null;
-          jurisdiction_forum: string | null;
-          confidentiality_period_months: number | null;
-          approved_by: string | null;
           alert_emails: string | null;
           file_path: string | null;
           notes: string | null;
@@ -77,9 +86,9 @@ export interface Database {
           status?: ContractStatus;
           start_date: string;
           end_date?: string | null;
-          renewal_type?: RenewalType;
           renewal_notice_days?: number;
-          total_amount_cents: number;
+          total_amount_cents?: number | null;
+          is_variable_value?: boolean;
           counterparty_cnpj?: string | null;
           readjustment_index?: ReadjustmentIndex | null;
           readjustment_period_months?: number | null;
@@ -91,11 +100,7 @@ export interface Database {
           internal_code?: string | null;
           department?: string | null;
           internal_manager_id?: string | null;
-          signature_date?: string | null;
           termination_reason?: string | null;
-          jurisdiction_forum?: string | null;
-          confidentiality_period_months?: number | null;
-          approved_by?: string | null;
           alert_emails?: string | null;
           file_path?: string | null;
           notes?: string | null;
@@ -151,6 +156,22 @@ export interface Database {
           changed_at?: string;
         };
         Update: Partial<Database['public']['Tables']['contract_status_history']['Insert']>;
+        Relationships: [];
+      };
+      contract_alert_log: {
+        Row: {
+          id: string;
+          contract_id: string;
+          alert_type: 'vencimento' | 'reajuste';
+          sent_at: string;
+        };
+        Insert: {
+          id?: string;
+          contract_id: string;
+          alert_type: 'vencimento' | 'reajuste';
+          sent_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['contract_alert_log']['Insert']>;
         Relationships: [];
       };
     };

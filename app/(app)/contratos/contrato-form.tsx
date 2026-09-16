@@ -14,7 +14,6 @@ import {
   type ContractDetailType,
   type ContractType,
   type ReadjustmentIndex,
-  type RenewalType,
 } from '@/types/domain';
 import { createContract, updateContract } from './actions';
 
@@ -37,9 +36,9 @@ export interface ContractDefaults {
   contract_detail_type: ContractDetailType | null;
   start_date: string;
   end_date: string | null;
-  renewal_type: RenewalType;
   renewal_notice_days: number;
-  total_amount_cents: number;
+  total_amount_cents: number | null;
+  is_variable_value: boolean;
   counterparty_cnpj: string | null;
   readjustment_index: ReadjustmentIndex | null;
   readjustment_period_months: number | null;
@@ -50,11 +49,7 @@ export interface ContractDefaults {
   internal_code: string | null;
   department: string | null;
   internal_manager_id: string | null;
-  signature_date: string | null;
   termination_reason: string | null;
-  jurisdiction_forum: string | null;
-  confidentiality_period_months: number | null;
-  approved_by: string | null;
   alert_emails: string | null;
   notes: string | null;
   file_path: string | null;
@@ -118,9 +113,9 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
   const [open, setOpen] = useState(false);
   const [extracting, setExtracting] = useState(false);
   const [extractionNote, setExtractionNote] = useState<string | null>(null);
-  const [autoRenewal, setAutoRenewal] = useState(contract?.renewal_type === 'automatica');
   const [indeterminateTerm, setIndeterminateTerm] = useState(mode === 'edit' && !contract?.end_date);
   const [hasDistrato, setHasDistrato] = useState(contract?.has_distrato ?? false);
+  const [isVariableValue, setIsVariableValue] = useState(contract?.is_variable_value ?? false);
   const titleRef = useRef<HTMLInputElement>(null);
   const startDateRef = useRef<HTMLInputElement>(null);
   const endDateRef = useRef<HTMLInputElement>(null);
@@ -132,7 +127,6 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
   const readjustmentPeriodRef = useRef<HTMLInputElement>(null);
   const action = mode === 'edit' ? updateContract : createContract;
   const title = mode === 'edit' ? 'Editar contrato' : 'Novo contrato';
-  const renewalTypeFallback = contract?.renewal_type === 'manual' ? 'manual' : 'nenhuma';
 
   async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -163,7 +157,7 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
       if (suggestions.endDate && endDateRef.current && !endDateRef.current.value && !indeterminateTerm) {
         endDateRef.current.value = suggestions.endDate;
       }
-      if (suggestions.amountCents != null && amountRef.current && !amountRef.current.value) {
+      if (suggestions.amountCents != null && amountRef.current && !amountRef.current.value && !isVariableValue) {
         amountRef.current.value = centsToAmountText(suggestions.amountCents);
       }
       if (suggestions.counterpartyCnpj && cnpjRef.current && !cnpjRef.current.value) {
@@ -172,8 +166,8 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
       if (suggestions.readjustmentPeriodMonths != null && readjustmentPeriodRef.current && !readjustmentPeriodRef.current.value) {
         readjustmentPeriodRef.current.value = String(suggestions.readjustmentPeriodMonths);
       }
-      // Categoria/detalhamento/índice de reajuste/renovação automática só são pré-preenchidos ao
-      // criar um contrato novo, para nunca sobrescrever uma escolha já salva ao editar.
+      // Categoria/detalhamento/índice de reajuste só são pré-preenchidos ao criar um contrato
+      // novo, para nunca sobrescrever uma escolha já salva ao editar.
       if (mode === 'create') {
         if (suggestions.contractType && contractTypeRef.current) {
           contractTypeRef.current.value = suggestions.contractType;
@@ -183,9 +177,6 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
         }
         if (suggestions.readjustmentIndex && readjustmentIndexRef.current) {
           readjustmentIndexRef.current.value = suggestions.readjustmentIndex;
-        }
-        if (highlights?.clauses.includes('Renovação automática')) {
-          setAutoRenewal(true);
         }
       }
 
@@ -209,6 +200,13 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
     }
   }
 
+  function handleVariableValueChange(checked: boolean) {
+    setIsVariableValue(checked);
+    if (checked && amountRef.current) {
+      amountRef.current.value = '';
+    }
+  }
+
   return (
     <>
       <Button type="button" variant={triggerVariant ?? 'primary'} onClick={() => setOpen(true)}>
@@ -218,7 +216,20 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
       <Dialog open={open} onClose={() => setOpen(false)} title={title} className="max-w-2xl">
         <form action={action} onSubmit={() => setOpen(false)} className="flex flex-col gap-4">
           {mode === 'edit' && contract ? <input type="hidden" name="id" value={contract.id} /> : null}
-          <input type="hidden" name="renewalType" value={autoRenewal ? 'automatica' : renewalTypeFallback} />
+
+          <div>
+            <Label htmlFor={`file-${mode}`}>Arquivo do contrato (PDF)</Label>
+            <Input id={`file-${mode}`} name="file" type="file" accept="application/pdf" onChange={handleFileChange} />
+            <p className="mt-1 text-xs text-muted-foreground">
+              PDF, até 10MB. Ao selecionar o arquivo, tentamos ler início/fim da vigência, valor,
+              CNPJ e nome da contraparte, categoria e reajuste para pré-preencher os campos abaixo.
+              {mode === 'edit' && contract?.file_path ? ' Envie um novo arquivo para substituir o atual.' : ''}
+            </p>
+            {extracting && <p className="mt-1 text-xs text-muted-foreground">Lendo o PDF…</p>}
+            {!extracting && extractionNote && (
+              <p className="mt-1 text-xs text-muted-foreground">{extractionNote}</p>
+            )}
+          </div>
 
           <div>
             <Label htmlFor={`title-${mode}`}>Nome do contrato</Label>
@@ -258,7 +269,7 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor={`internalManagerId-${mode}`}>Gestor interno</Label>
+              <Label htmlFor={`internalManagerId-${mode}`}>Gestor do contrato</Label>
               <Select
                 id={`internalManagerId-${mode}`}
                 name="internalManagerId"
@@ -271,6 +282,9 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
                   </option>
                 ))}
               </Select>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Lista gerenciada em Configurações → Gestores.
+              </p>
             </div>
             <div>
               <Label htmlFor={`counterpartyCnpj-${mode}`}>CNPJ da contraparte</Label>
@@ -332,19 +346,6 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
               />
             </div>
             <div>
-              <Label htmlFor={`jurisdictionForum-${mode}`}>Foro de eleição</Label>
-              <Input
-                id={`jurisdictionForum-${mode}`}
-                name="jurisdictionForum"
-                type="text"
-                placeholder="Ex.: Comarca de São Paulo"
-                defaultValue={contract?.jurisdiction_forum ?? ''}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
               <Label htmlFor={`contactEmail-${mode}`}>E-mail de contato</Label>
               <Input
                 id={`contactEmail-${mode}`}
@@ -354,6 +355,9 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
                 defaultValue={contract?.contact_email ?? ''}
               />
             </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor={`contactPhone-${mode}`}>Telefone de contato</Label>
               <Input
@@ -364,33 +368,23 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
                 defaultValue={contract?.contact_phone ?? ''}
               />
             </div>
-          </div>
-
-          <div>
-            <Label htmlFor={`alertEmails-${mode}`}>E-mails para alerta de vencimento/renovação</Label>
-            <Input
-              id={`alertEmails-${mode}`}
-              name="alertEmails"
-              type="text"
-              placeholder="fulano@msbbrasil.com, ciclana@msbbrasil.com"
-              defaultValue={contract?.alert_emails ?? ''}
-            />
-            <p className="mt-1 text-xs text-muted-foreground">
-              Separe múltiplos e-mails por vírgula. Fica registrado aqui; o envio automático não
-              está implementado ainda.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor={`signatureDate-${mode}`}>Data de assinatura</Label>
+              <Label htmlFor={`alertEmails-${mode}`}>E-mails para alerta de vencimento/reajuste</Label>
               <Input
-                id={`signatureDate-${mode}`}
-                name="signatureDate"
-                type="date"
-                defaultValue={contract?.signature_date?.slice(0, 10) ?? ''}
+                id={`alertEmails-${mode}`}
+                name="alertEmails"
+                type="text"
+                placeholder="fulano@msbbrasil.com, ciclana@msbbrasil.com"
+                defaultValue={contract?.alert_emails ?? ''}
               />
             </div>
+          </div>
+          <p className="-mt-2 text-xs text-muted-foreground">
+            O envio automático por e-mail acontece uma vez por dia, quando o contrato entra no
+            prazo de aviso prévio (vencimento) ou se aproxima da data de reajuste.
+          </p>
+
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor={`startDate-${mode}`}>Início da vigência</Label>
               <Input
@@ -402,9 +396,6 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
                 required
               />
             </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor={`endDate-${mode}`}>Fim da vigência</Label>
               <Input
@@ -416,8 +407,17 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
                 disabled={indeterminateTerm}
               />
             </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <CheckboxField
+              id={`indeterminateTerm-${mode}`}
+              label="Vigência indeterminada"
+              checked={indeterminateTerm}
+              onChange={handleIndeterminateTermChange}
+            />
             <div>
-              <Label htmlFor={`renewalNoticeDays-${mode}`}>Avisar com quantos dias de antecedência</Label>
+              <Label htmlFor={`renewalNoticeDays-${mode}`}>Aviso prévio (dias)</Label>
               <Input
                 id={`renewalNoticeDays-${mode}`}
                 name="renewalNoticeDays"
@@ -430,32 +430,27 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <CheckboxField
-              id={`indeterminateTerm-${mode}`}
-              label="Vigência indeterminada"
-              checked={indeterminateTerm}
-              onChange={handleIndeterminateTermChange}
-            />
-            <CheckboxField
-              id={`autoRenewal-${mode}`}
-              label="Renovação automática"
-              checked={autoRenewal}
-              onChange={setAutoRenewal}
-            />
-          </div>
-
-          <div>
-            <Label htmlFor={`amount-${mode}`}>Valor total do contrato</Label>
-            <Input
-              ref={amountRef}
-              id={`amount-${mode}`}
-              name="amount"
-              type="text"
-              inputMode="decimal"
-              placeholder="0,00"
-              defaultValue={centsToAmountText(contract?.total_amount_cents)}
-              required
-            />
+            <div>
+              <Label htmlFor={`amount-${mode}`}>Valor total do contrato</Label>
+              <Input
+                ref={amountRef}
+                id={`amount-${mode}`}
+                name="amount"
+                type="text"
+                inputMode="decimal"
+                placeholder="0,00"
+                defaultValue={centsToAmountText(contract?.total_amount_cents)}
+                disabled={isVariableValue}
+              />
+            </div>
+            <div className="flex items-end pb-2">
+              <CheckboxField
+                id={`isVariableValue-${mode}`}
+                label="Valor variável (sem total previsto)"
+                checked={isVariableValue}
+                onChange={handleVariableValueChange}
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -489,30 +484,6 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor={`confidentialityPeriodMonths-${mode}`}>Sigilo pós-encerramento (meses)</Label>
-              <Input
-                id={`confidentialityPeriodMonths-${mode}`}
-                name="confidentialityPeriodMonths"
-                type="number"
-                min={0}
-                placeholder="Ex.: 24"
-                defaultValue={contract?.confidentiality_period_months ?? ''}
-              />
-            </div>
-            <div>
-              <Label htmlFor={`approvedBy-${mode}`}>Aprovado por</Label>
-              <Input
-                id={`approvedBy-${mode}`}
-                name="approvedBy"
-                type="text"
-                placeholder="Nome e cargo/alçada"
-                defaultValue={contract?.approved_by ?? ''}
-              />
-            </div>
-          </div>
-
           <div>
             <Label htmlFor={`terminationReason-${mode}`}>Motivo de encerramento/rescisão</Label>
             <Textarea
@@ -527,20 +498,6 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
           <div>
             <Label htmlFor={`notes-${mode}`}>Observações</Label>
             <Textarea id={`notes-${mode}`} name="notes" defaultValue={contract?.notes ?? ''} rows={3} />
-          </div>
-
-          <div>
-            <Label htmlFor={`file-${mode}`}>Arquivo do contrato (PDF)</Label>
-            <Input id={`file-${mode}`} name="file" type="file" accept="application/pdf" onChange={handleFileChange} />
-            <p className="mt-1 text-xs text-muted-foreground">
-              PDF, até 10MB. Ao selecionar o arquivo, tentamos ler início/fim da vigência, valor,
-              CNPJ e nome da contraparte, categoria e reajuste para pré-preencher os campos acima.
-              {mode === 'edit' && contract?.file_path ? ' Envie um novo arquivo para substituir o atual.' : ''}
-            </p>
-            {extracting && <p className="mt-1 text-xs text-muted-foreground">Lendo o PDF…</p>}
-            {!extracting && extractionNote && (
-              <p className="mt-1 text-xs text-muted-foreground">{extractionNote}</p>
-            )}
           </div>
 
           <div className="border-t border-border pt-4">
