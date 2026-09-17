@@ -124,5 +124,15 @@ export async function GET(request: Request) {
   }
 
   console.log(`[contract-alerts] execução concluída: ${sent.length} enviado(s), ${failed.length} falha(s)`);
-  return NextResponse.json({ sent, failed, queryErrors });
+  return NextResponse.json({
+    sent,
+    failed,
+    queryErrors,
+    debug: {
+      today: today.toISOString(),
+      expiringCount: expiring?.length ?? 0,
+      expiring,
+      readjustableCount: readjustable?.length ?? 0,
+    },
+  });
 }
