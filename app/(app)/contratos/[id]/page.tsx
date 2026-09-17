@@ -8,13 +8,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ContractStatusBadge } from '@/components/status-badge';
 import { ConfirmSubmitForm } from '@/components/confirm-submit-form';
 import {
-  AMENDMENT_STATUS_LABELS,
   CONTRACT_DETAIL_TYPE_LABELS,
   CONTRACT_STATUS_LABELS,
   CONTRACT_TYPE_LABELS,
@@ -370,21 +368,9 @@ export default async function ContratoDetalhePage({
                 <Input id="new-amendment-date" name="amendmentDate" type="date" required />
               </div>
             </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <Label htmlFor="new-amendment-status">Status</Label>
-                <Select id="new-amendment-status" name="status" defaultValue="em_analise">
-                  {Object.entries(AMENDMENT_STATUS_LABELS).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="new-amendment-file">Documento (PDF, opcional)</Label>
-                <Input id="new-amendment-file" name="file" type="file" accept="application/pdf" />
-              </div>
+            <div>
+              <Label htmlFor="new-amendment-file">Documento (PDF, opcional)</Label>
+              <Input id="new-amendment-file" name="file" type="file" accept="application/pdf" />
             </div>
             <div>
               <Label htmlFor="new-amendment-description">Resumo do documento</Label>
