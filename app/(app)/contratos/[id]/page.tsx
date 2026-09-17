@@ -306,6 +306,7 @@ export default async function ContratoDetalhePage({
                 <TableHead>Nome do documento</TableHead>
                 <TableHead>Resumo</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Documento</TableHead>
                 <TableHead className="w-0" />
               </TableRow>
             </TableHeader>
@@ -313,6 +314,11 @@ export default async function ContratoDetalhePage({
               {(amendments ?? []).map((amendment) => (
                 <TableRow key={amendment.id}>
                   <TableCell>{formatDate(amendment.amendment_date)}</TableCell>
+                  <TableCell>{amendment.document_name ?? '—'}</TableCell>
+                  <TableCell>{amendment.description}</TableCell>
+                  <TableCell>
+                    <AmendmentStatusForm amendmentId={amendment.id} contractId={contract.id} status={amendment.status} />
+                  </TableCell>
                   <TableCell>
                     {amendmentFileUrls.has(amendment.id) ? (
                       <a
@@ -321,15 +327,11 @@ export default async function ContratoDetalhePage({
                         rel="noreferrer"
                         className="text-primary hover:underline"
                       >
-                        {amendment.document_name ?? 'Baixar PDF'}
+                        Baixar PDF
                       </a>
                     ) : (
-                      amendment.document_name ?? '—'
+                      '—'
                     )}
-                  </TableCell>
-                  <TableCell>{amendment.description}</TableCell>
-                  <TableCell>
-                    <AmendmentStatusForm amendmentId={amendment.id} contractId={contract.id} status={amendment.status} />
                   </TableCell>
                   <TableCell>
                     <ConfirmSubmitForm
@@ -346,7 +348,7 @@ export default async function ContratoDetalhePage({
               ))}
               {(amendments ?? []).length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center text-muted-foreground">
                     Nenhum aditivo registrado.
                   </TableCell>
                 </TableRow>
