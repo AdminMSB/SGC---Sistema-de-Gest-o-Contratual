@@ -58,7 +58,8 @@ export interface Database {
           is_variable_value: boolean;
           counterparty_cnpj: string | null;
           readjustment_index: ReadjustmentIndex | null;
-          readjustment_period_months: number | null;
+          readjustment_date: string | null;
+          variable_payment_note: string | null;
           has_distrato: boolean;
           distrato_file_path: string | null;
           representative_name: string | null;
@@ -69,7 +70,6 @@ export interface Database {
           internal_code: string | null;
           department: string | null;
           internal_manager_id: string | null;
-          termination_reason: string | null;
           alert_emails: string | null;
           file_path: string | null;
           notes: string | null;
@@ -92,7 +92,8 @@ export interface Database {
           is_variable_value?: boolean;
           counterparty_cnpj?: string | null;
           readjustment_index?: ReadjustmentIndex | null;
-          readjustment_period_months?: number | null;
+          readjustment_date?: string | null;
+          variable_payment_note?: string | null;
           has_distrato?: boolean;
           distrato_file_path?: string | null;
           representative_name?: string | null;
@@ -103,7 +104,6 @@ export interface Database {
           internal_code?: string | null;
           department?: string | null;
           internal_manager_id?: string | null;
-          termination_reason?: string | null;
           alert_emails?: string | null;
           file_path?: string | null;
           notes?: string | null;

@@ -239,14 +239,14 @@ export default async function ContratoDetalhePage({
               <DetailRow
                 label="Reajuste"
                 value={
-                  contract.readjustment_period_months != null
-                    ? `${READJUSTMENT_INDEX_LABELS[contract.readjustment_index]} a cada ${contract.readjustment_period_months} mês(es)`
+                  contract.readjustment_date
+                    ? `${READJUSTMENT_INDEX_LABELS[contract.readjustment_index]} — previsto para ${formatDate(contract.readjustment_date)}`
                     : READJUSTMENT_INDEX_LABELS[contract.readjustment_index]
                 }
               />
             )}
-            {contract.termination_reason && (
-              <DetailRow label="Motivo de encerramento/rescisão" value={contract.termination_reason} />
+            {contract.variable_payment_note && (
+              <DetailRow label="Pagamento variável adicional" value={contract.variable_payment_note} />
             )}
             {contract.notes && <DetailRow label="Observações" value={contract.notes} />}
             <DetailRow

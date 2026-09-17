@@ -40,7 +40,8 @@ export interface ContractDefaults {
   is_variable_value: boolean;
   counterparty_cnpj: string | null;
   readjustment_index: ReadjustmentIndex | null;
-  readjustment_period_months: number | null;
+  readjustment_date: string | null;
+  variable_payment_note: string | null;
   has_distrato: boolean;
   representative_name: string | null;
   contact_email: string | null;
@@ -50,7 +51,6 @@ export interface ContractDefaults {
   internal_code: string | null;
   department: string | null;
   internal_manager_id: string | null;
-  termination_reason: string | null;
   alert_emails: string | null;
   notes: string | null;
   file_path: string | null;
@@ -108,7 +108,6 @@ interface ExtractPdfResponse {
     contractType: ContractType | null;
     contractDetailType: ContractDetailType | null;
     readjustmentIndex: ReadjustmentIndex | null;
-    readjustmentPeriodMonths: number | null;
   } | null;
 }
 
@@ -128,7 +127,6 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
   const contractTypeRef = useRef<HTMLSelectElement>(null);
   const contractDetailTypeRef = useRef<HTMLInputElement>(null);
   const readjustmentIndexRef = useRef<HTMLSelectElement>(null);
-  const readjustmentPeriodRef = useRef<HTMLInputElement>(null);
   const action = mode === 'edit' ? updateContract : createContract;
   const title = mode === 'edit' ? 'Editar contrato' : 'Novo contrato';
 
@@ -166,9 +164,6 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
       }
       if (suggestions.counterpartyCnpj && cnpjRef.current && !cnpjRef.current.value) {
         cnpjRef.current.value = suggestions.counterpartyCnpj;
-      }
-      if (suggestions.readjustmentPeriodMonths != null && readjustmentPeriodRef.current && !readjustmentPeriodRef.current.value) {
-        readjustmentPeriodRef.current.value = String(suggestions.readjustmentPeriodMonths);
       }
       // Categoria/detalhamento/índice de reajuste só são pré-preenchidos ao criar um contrato
       // novo, para nunca sobrescrever uma escolha já salva ao editar.
@@ -228,6 +223,10 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
             )}
           </div>
 
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Dados do contrato
+          </h2>
+
           <div>
             <Label htmlFor={`title-${mode}`}>Nome do contrato</Label>
             <Input
@@ -241,64 +240,16 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor={`internalCode-${mode}`}>Número/código interno</Label>
-              <Input
-                id={`internalCode-${mode}`}
-                name="internalCode"
-                type="text"
-                placeholder="Ex.: CTR-2026-014"
-                defaultValue={contract?.internal_code ?? ''}
-              />
-            </div>
-            <div>
-              <Label htmlFor={`department-${mode}`}>Departamento/centro de custo</Label>
-              <Select
-                id={`department-${mode}`}
-                name="department"
-                defaultValue={contract?.department ?? ''}
-              >
-                <option value="">Não especificado</option>
-                {DEPARTMENT_ENTRIES.map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </Select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor={`internalManagerId-${mode}`}>Gestor do contrato</Label>
-              <Select
-                id={`internalManagerId-${mode}`}
-                name="internalManagerId"
-                defaultValue={contract?.internal_manager_id ?? ''}
-              >
-                <option value="">Não definido</option>
-                {managers.map((manager) => (
-                  <option key={manager.id} value={manager.id}>
-                    {manager.full_name}
-                  </option>
-                ))}
-              </Select>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Lista gerenciada em Configurações → Gestores.
-              </p>
-            </div>
-            <div>
-              <Label htmlFor={`counterpartyCnpj-${mode}`}>CNPJ da contraparte</Label>
-              <Input
-                ref={cnpjRef}
-                id={`counterpartyCnpj-${mode}`}
-                name="counterpartyCnpj"
-                type="text"
-                placeholder="00.000.000/0000-00"
-                defaultValue={contract?.counterparty_cnpj ?? ''}
-              />
-            </div>
+          <div>
+            <Label htmlFor={`counterpartyCnpj-${mode}`}>CNPJ da contraparte</Label>
+            <Input
+              ref={cnpjRef}
+              id={`counterpartyCnpj-${mode}`}
+              name="counterpartyCnpj"
+              type="text"
+              placeholder="00.000.000/0000-00"
+              defaultValue={contract?.counterparty_cnpj ?? ''}
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -390,21 +341,6 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
             onChange={setIsWhatsapp}
           />
 
-          <div>
-            <Label htmlFor={`alertEmails-${mode}`}>E-mails para alerta de vencimento/reajuste</Label>
-            <Input
-              id={`alertEmails-${mode}`}
-              name="alertEmails"
-              type="text"
-              placeholder="fulano@msbbrasil.com, ciclana@msbbrasil.com"
-              defaultValue={contract?.alert_emails ?? ''}
-            />
-          </div>
-          <p className="-mt-2 text-xs text-muted-foreground">
-            O envio automático por e-mail acontece uma vez por dia, quando o contrato entra no
-            prazo de aviso prévio (vencimento) ou se aproxima da data de reajuste.
-          </p>
-
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor={`startDate-${mode}`}>Início da vigência</Label>
@@ -475,6 +411,17 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
             </div>
           </div>
 
+          <div>
+            <Label htmlFor={`variablePaymentNote-${mode}`}>Pagamento variável adicional (opcional)</Label>
+            <Textarea
+              id={`variablePaymentNote-${mode}`}
+              name="variablePaymentNote"
+              defaultValue={contract?.variable_payment_note ?? ''}
+              rows={2}
+              placeholder="Ex.: além do valor fixo, comissão de 5% sobre vendas mensais."
+            />
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor={`readjustmentIndex-${mode}`}>Índice de reajuste</Label>
@@ -493,28 +440,14 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
               </Select>
             </div>
             <div>
-              <Label htmlFor={`readjustmentPeriodMonths-${mode}`}>Período de reajuste (meses)</Label>
+              <Label htmlFor={`readjustmentDate-${mode}`}>Data prevista de reajuste</Label>
               <Input
-                ref={readjustmentPeriodRef}
-                id={`readjustmentPeriodMonths-${mode}`}
-                name="readjustmentPeriodMonths"
-                type="number"
-                min={0}
-                placeholder="Ex.: 12"
-                defaultValue={contract?.readjustment_period_months ?? ''}
+                id={`readjustmentDate-${mode}`}
+                name="readjustmentDate"
+                type="date"
+                defaultValue={contract?.readjustment_date?.slice(0, 10) ?? ''}
               />
             </div>
-          </div>
-
-          <div>
-            <Label htmlFor={`terminationReason-${mode}`}>Motivo de encerramento/rescisão</Label>
-            <Textarea
-              id={`terminationReason-${mode}`}
-              name="terminationReason"
-              defaultValue={contract?.termination_reason ?? ''}
-              rows={2}
-              placeholder="Preencha quando o contrato terminar antes do previsto ou não for renovado."
-            />
           </div>
 
           <div>
@@ -544,6 +477,69 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
               </p>
             </div>
           )}
+
+          <h2 className="border-t border-border pt-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Dados internos
+          </h2>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor={`internalManagerId-${mode}`}>Gestor do contrato</Label>
+              <Select
+                id={`internalManagerId-${mode}`}
+                name="internalManagerId"
+                defaultValue={contract?.internal_manager_id ?? ''}
+              >
+                <option value="">Não definido</option>
+                {managers.map((manager) => (
+                  <option key={manager.id} value={manager.id}>
+                    {manager.full_name}
+                  </option>
+                ))}
+              </Select>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Lista gerenciada em Configurações → Gestores.
+              </p>
+            </div>
+            <div>
+              <Label htmlFor={`internalCode-${mode}`}>Número/código interno</Label>
+              <Input
+                id={`internalCode-${mode}`}
+                name="internalCode"
+                type="text"
+                placeholder="Ex.: CTR-2026-014"
+                defaultValue={contract?.internal_code ?? ''}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor={`department-${mode}`}>Departamento/centro de custo</Label>
+              <Select id={`department-${mode}`} name="department" defaultValue={contract?.department ?? ''}>
+                <option value="">Não especificado</option>
+                {DEPARTMENT_ENTRIES.map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor={`alertEmails-${mode}`}>E-mails para alerta de vencimento/reajuste</Label>
+              <Input
+                id={`alertEmails-${mode}`}
+                name="alertEmails"
+                type="text"
+                placeholder="fulano@msbbrasil.com, ciclana@msbbrasil.com"
+                defaultValue={contract?.alert_emails ?? ''}
+              />
+            </div>
+          </div>
+          <p className="-mt-2 text-xs text-muted-foreground">
+            O envio automático por e-mail acontece uma vez por dia, quando o contrato entra no
+            prazo de aviso prévio (vencimento) ou se aproxima da data de reajuste.
+          </p>
 
           <div className="flex justify-end gap-2">
             <Button type="button" variant="secondary" onClick={() => setOpen(false)}>

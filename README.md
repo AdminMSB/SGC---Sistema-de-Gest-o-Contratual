@@ -154,8 +154,8 @@ vencimento/reajuste" quando:
 
 - o contrato entra no prazo de **aviso prévio** antes do fim da vigência (mesma janela usada
   pela view `contracts_expiring`); ou
-- a próxima data de reajuste (calculada a partir do início da vigência + "Período de reajuste em
-  meses") cai dentro do prazo de aviso prévio.
+- a "Data prevista de reajuste" (preenchida manualmente no cadastro) cai dentro do prazo de
+  aviso prévio.
 
 Cada alerta só é enviado uma vez por ciclo — `contract_alert_log` registra o que já foi
 notificado e evita reenvio enquanto o contrato continuar na mesma janela.

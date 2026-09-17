@@ -27,6 +27,9 @@ export function Dialog({ open, onClose, title, children, className }: DialogProp
       ref={ref}
       onClose={onClose}
       onCancel={onClose}
+      onClick={(event) => {
+        if (event.target === ref.current) onClose();
+      }}
       className={cn(
         'w-full max-w-lg rounded-lg border border-border bg-card p-0 text-card-foreground backdrop:bg-black/50',
         className,

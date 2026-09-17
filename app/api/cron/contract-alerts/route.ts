@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createAdminSupabaseClient } from '@/lib/supabase/admin';
-import { computeNextReadjustmentDate, isWithinNoticeWindow } from '@/lib/contract-alerts';
+import { isWithinNoticeWindow } from '@/lib/contract-alerts';
 import { sendMail } from '@/lib/mailer';
 import { formatDate } from '@/lib/format';
 
@@ -91,13 +91,12 @@ export async function GET(request: Request) {
     );
   }
 
-  // Reajuste: precisa ser calculado (não existe uma view pronta, já que depende do período de
-  // reajuste em meses a partir do início da vigência).
+  // Reajuste: data prevista é preenchida manualmente (não existe uma view pronta para isso).
   const { data: readjustable, error: readjustableError } = await supabase
     .from('contracts')
-    .select('id, title, start_date, renewal_notice_days, readjustment_period_months, alert_emails')
+    .select('id, title, readjustment_date, renewal_notice_days, alert_emails')
     .eq('status', 'ativo')
-    .not('readjustment_period_months', 'is', null)
+    .not('readjustment_date', 'is', null)
     .not('alert_emails', 'is', null);
   if (readjustableError) {
     queryErrors.push(`contracts (reajuste): ${readjustableError.message}`);
@@ -105,10 +104,9 @@ export async function GET(request: Request) {
   }
 
   for (const contract of readjustable ?? []) {
-    if (!contract.alert_emails || !contract.readjustment_period_months) continue;
+    if (!contract.alert_emails || !contract.readjustment_date) continue;
 
-    const nextDate = computeNextReadjustmentDate(contract.start_date, contract.readjustment_period_months, today);
-    if (!isWithinNoticeWindow(nextDate, contract.renewal_notice_days, today)) continue;
+    if (!isWithinNoticeWindow(contract.readjustment_date, contract.renewal_notice_days, today)) continue;
     if (await alreadySent(contract.id, 'reajuste', contract.renewal_notice_days)) continue;
 
     const recipients = contract.alert_emails.split(',').map((email) => email.trim()).filter(Boolean);
@@ -119,7 +117,7 @@ export async function GET(request: Request) {
       'reajuste',
       recipients,
       `Contrato "${contract.title}" se aproxima da data de reajuste`,
-      `<p>O contrato <strong>${contract.title}</strong> tem reajuste previsto para <strong>${formatDate(nextDate)}</strong>.</p>`,
+      `<p>O contrato <strong>${contract.title}</strong> tem reajuste previsto para <strong>${formatDate(contract.readjustment_date)}</strong>.</p>`,
     );
   }
 
