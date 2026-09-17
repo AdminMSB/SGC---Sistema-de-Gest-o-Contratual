@@ -204,10 +204,18 @@ export default async function ContratoDetalhePage({
               <DetailRow label="CNPJ da contraparte" value={contract.counterparty_cnpj} />
             )}
             {contract.representative_name && (
-              <DetailRow label="Representante" value={contract.representative_name} />
+              <DetailRow label="Contato" value={contract.representative_name} />
             )}
             {contract.contact_email && <DetailRow label="E-mail de contato" value={contract.contact_email} />}
-            {contract.contact_phone && <DetailRow label="Telefone de contato" value={contract.contact_phone} />}
+            {contract.contact_phone && (
+              <DetailRow
+                label="Telefone de contato"
+                value={contract.is_whatsapp ? `${contract.contact_phone} (WhatsApp)` : contract.contact_phone}
+              />
+            )}
+            {contract.contact_phone_2 && (
+              <DetailRow label="Telefone de contato (2)" value={contract.contact_phone_2} />
+            )}
             {contract.alert_emails && <DetailRow label="E-mails para alerta" value={contract.alert_emails} />}
             <DetailRow label="Status" value={<ContractStatusBadge status={contract.status} />} />
             <DetailRow label="Início da vigência" value={formatDate(contract.start_date)} />

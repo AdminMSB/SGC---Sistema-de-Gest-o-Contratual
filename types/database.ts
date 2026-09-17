@@ -65,6 +65,8 @@ export interface Database {
           representative_name: string | null;
           contact_email: string | null;
           contact_phone: string | null;
+          contact_phone_2: string | null;
+          is_whatsapp: boolean;
           internal_code: string | null;
           department: string | null;
           internal_manager_id: string | null;
@@ -97,6 +99,8 @@ export interface Database {
           representative_name?: string | null;
           contact_email?: string | null;
           contact_phone?: string | null;
+          contact_phone_2?: string | null;
+          is_whatsapp?: boolean;
           internal_code?: string | null;
           department?: string | null;
           internal_manager_id?: string | null;

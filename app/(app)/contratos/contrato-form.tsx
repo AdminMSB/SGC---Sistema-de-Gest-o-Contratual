@@ -49,6 +49,8 @@ export interface ContractDefaults {
   representative_name: string | null;
   contact_email: string | null;
   contact_phone: string | null;
+  contact_phone_2: string | null;
+  is_whatsapp: boolean;
   internal_code: string | null;
   department: string | null;
   internal_manager_id: string | null;
@@ -74,11 +76,13 @@ function centsToAmountText(cents: number | null | undefined): string {
 
 function CheckboxField({
   id,
+  name,
   label,
   checked,
   onChange,
 }: {
   id: string;
+  name?: string;
   label: string;
   checked: boolean;
   onChange: (checked: boolean) => void;
@@ -87,6 +91,7 @@ function CheckboxField({
     <label htmlFor={id} className="flex items-center gap-2 text-sm">
       <input
         id={id}
+        name={name}
         type="checkbox"
         checked={checked}
         onChange={(event) => onChange(event.target.checked)}
@@ -119,6 +124,7 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
   const [indeterminateTerm, setIndeterminateTerm] = useState(mode === 'edit' && !contract?.end_date);
   const [hasDistrato, setHasDistrato] = useState(contract?.has_distrato ?? false);
   const [isVariableValue, setIsVariableValue] = useState(contract?.is_variable_value ?? false);
+  const [isWhatsapp, setIsWhatsapp] = useState(contract?.is_whatsapp ?? false);
   const titleRef = useRef<HTMLInputElement>(null);
   const startDateRef = useRef<HTMLInputElement>(null);
   const endDateRef = useRef<HTMLInputElement>(null);
@@ -344,12 +350,12 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor={`representativeName-${mode}`}>Nome do representante</Label>
+              <Label htmlFor={`representativeName-${mode}`}>Contato</Label>
               <Input
                 id={`representativeName-${mode}`}
                 name="representativeName"
                 type="text"
-                placeholder="Quando constar no contrato"
+                placeholder="Nome da pessoa de contato"
                 defaultValue={contract?.representative_name ?? ''}
               />
             </div>
@@ -377,15 +383,34 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
               />
             </div>
             <div>
-              <Label htmlFor={`alertEmails-${mode}`}>E-mails para alerta de vencimento/reajuste</Label>
+              <Label htmlFor={`contactPhone2-${mode}`}>Telefone de contato (2)</Label>
               <Input
-                id={`alertEmails-${mode}`}
-                name="alertEmails"
+                id={`contactPhone2-${mode}`}
+                name="contactPhone2"
                 type="text"
-                placeholder="fulano@msbbrasil.com, ciclana@msbbrasil.com"
-                defaultValue={contract?.alert_emails ?? ''}
+                placeholder="(00) 00000-0000"
+                defaultValue={contract?.contact_phone_2 ?? ''}
               />
             </div>
+          </div>
+
+          <CheckboxField
+            id={`isWhatsapp-${mode}`}
+            name="isWhatsapp"
+            label="Um dos telefones acima é WhatsApp"
+            checked={isWhatsapp}
+            onChange={setIsWhatsapp}
+          />
+
+          <div>
+            <Label htmlFor={`alertEmails-${mode}`}>E-mails para alerta de vencimento/reajuste</Label>
+            <Input
+              id={`alertEmails-${mode}`}
+              name="alertEmails"
+              type="text"
+              placeholder="fulano@msbbrasil.com, ciclana@msbbrasil.com"
+              defaultValue={contract?.alert_emails ?? ''}
+            />
           </div>
           <p className="-mt-2 text-xs text-muted-foreground">
             O envio automático por e-mail acontece uma vez por dia, quando o contrato entra no
@@ -454,6 +479,7 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
             <div className="flex items-end pb-2">
               <CheckboxField
                 id={`isVariableValue-${mode}`}
+                name="isVariableValue"
                 label="Valor variável (sem total previsto)"
                 checked={isVariableValue}
                 onChange={handleVariableValueChange}
@@ -511,6 +537,7 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
           <div className="border-t border-border pt-4">
             <CheckboxField
               id={`hasDistrato-${mode}`}
+              name="hasDistrato"
               label="Contrato com distrato"
               checked={hasDistrato}
               onChange={setHasDistrato}
