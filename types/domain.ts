@@ -77,7 +77,7 @@ export const CONTRACT_STATUS_LABELS: Record<ContractStatus, string> = {
 
 export const AMENDMENT_STATUS_LABELS: Record<AmendmentStatus, string> = {
   em_analise: 'Em análise',
-  assinado: 'Assinado',
+  assinado: 'Concluído',
 };
 
 export const DEPARTMENT_LABELS: Record<Department, string> = {
