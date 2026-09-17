@@ -47,8 +47,11 @@ export async function GET(request: Request) {
       await sendMail({ to: recipients, subject, html });
       await supabase.from('contract_alert_log').insert({ contract_id: contractId, alert_type: alertType });
       sent.push({ contractId, type: alertType });
+      console.log(`[contract-alerts] enviado: contrato=${contractId} tipo=${alertType} para=${recipients.join(', ')}`);
     } catch (error) {
-      failed.push({ contractId, type: alertType, error: error instanceof Error ? error.message : String(error) });
+      const message = error instanceof Error ? error.message : String(error);
+      failed.push({ contractId, type: alertType, error: message });
+      console.error(`[contract-alerts] falhou: contrato=${contractId} tipo=${alertType} erro=${message}`);
     }
   }
 
@@ -101,5 +104,6 @@ export async function GET(request: Request) {
     );
   }
 
+  console.log(`[contract-alerts] execução concluída: ${sent.length} enviado(s), ${failed.length} falha(s)`);
   return NextResponse.json({ sent, failed });
 }
