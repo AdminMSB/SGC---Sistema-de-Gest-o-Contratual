@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ContractStatusBadge } from '@/components/status-badge';
+import { ConfirmSubmitForm } from '@/components/confirm-submit-form';
 import { formatCurrencyCents, formatDate } from '@/lib/format';
 import {
   CONTRACT_STATUS_LABELS,
@@ -14,6 +15,7 @@ import {
   type ContractStatus,
   type ContractType,
 } from '@/types/domain';
+import { deleteContract } from './actions';
 
 export interface ContractListItem {
   id: string;
@@ -28,7 +30,7 @@ export interface ContractListItem {
 const STATUS_ENTRIES = Object.entries(CONTRACT_STATUS_LABELS) as [ContractStatus, string][];
 const TYPE_ENTRIES = Object.entries(CONTRACT_TYPE_LABELS) as [ContractType, string][];
 
-export function ContratosTable({ rows }: { rows: ContractListItem[] }) {
+export function ContratosTable({ rows, isAdmin }: { rows: ContractListItem[]; isAdmin: boolean }) {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<ContractStatus | ''>('ativo');
   const [type, setType] = useState<ContractType | ''>('');
@@ -96,6 +98,7 @@ export function ContratosTable({ rows }: { rows: ContractListItem[] }) {
             <TableHead>Fim da vigência</TableHead>
             <TableHead>Valor</TableHead>
             <TableHead>Status</TableHead>
+            {isAdmin && <TableHead className="text-right">Ações</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -112,11 +115,23 @@ export function ContratosTable({ rows }: { rows: ContractListItem[] }) {
               <TableCell>
                 <ContractStatusBadge status={row.status} />
               </TableCell>
+              {isAdmin && (
+                <TableCell className="text-right">
+                  <ConfirmSubmitForm
+                    action={deleteContract}
+                    confirmMessage={`Excluir o contrato "${row.title}" e todo o histórico associado? Esta ação não pode ser desfeita.`}
+                    buttonLabel="Excluir"
+                    buttonSize="sm"
+                  >
+                    <input type="hidden" name="id" value={row.id} />
+                  </ConfirmSubmitForm>
+                </TableCell>
+              )}
             </TableRow>
           ))}
           {filteredRows.length === 0 && (
             <TableRow>
-              <TableCell colSpan={5} className="text-center text-muted-foreground">
+              <TableCell colSpan={isAdmin ? 6 : 5} className="text-center text-muted-foreground">
                 {rows.length === 0 ? 'Nenhum contrato cadastrado ainda.' : 'Nenhum contrato encontrado para esse filtro.'}
               </TableCell>
             </TableRow>

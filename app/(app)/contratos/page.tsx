@@ -9,7 +9,7 @@ export default async function ContratosPage({
 }: {
   searchParams: { error?: string };
 }) {
-  await requireProfile();
+  const profile = await requireProfile();
   const supabase = await createServerSupabaseClient();
 
   const [{ data: contracts }, { data: managers }] = await Promise.all([
@@ -39,7 +39,7 @@ export default async function ContratosPage({
           <CardTitle>Todos os contratos</CardTitle>
         </CardHeader>
         <CardContent>
-          <ContratosTable rows={contracts ?? []} />
+          <ContratosTable rows={contracts ?? []} isAdmin={profile.role === 'admin'} />
         </CardContent>
       </Card>
     </div>
