@@ -23,16 +23,21 @@ export async function GET(request: Request) {
   const today = new Date();
   const sent: { contractId: string; type: 'vencimento' | 'reajuste' }[] = [];
   const failed: { contractId: string; type: 'vencimento' | 'reajuste'; error: string }[] = [];
+  const queryErrors: string[] = [];
 
   async function alreadySent(contractId: string, alertType: 'vencimento' | 'reajuste', windowDays: number) {
     const since = new Date(today.getTime() - windowDays * 24 * 60 * 60 * 1000).toISOString();
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('contract_alert_log')
       .select('id')
       .eq('contract_id', contractId)
       .eq('alert_type', alertType)
       .gte('sent_at', since)
       .limit(1);
+    if (error) {
+      queryErrors.push(`contract_alert_log (consulta): ${error.message}`);
+      console.error('[contract-alerts] erro ao consultar contract_alert_log:', error);
+    }
     return (data?.length ?? 0) > 0;
   }
 
@@ -45,7 +50,13 @@ export async function GET(request: Request) {
   ) {
     try {
       await sendMail({ to: recipients, subject, html });
-      await supabase.from('contract_alert_log').insert({ contract_id: contractId, alert_type: alertType });
+      const { error: logError } = await supabase
+        .from('contract_alert_log')
+        .insert({ contract_id: contractId, alert_type: alertType });
+      if (logError) {
+        queryErrors.push(`contract_alert_log (insert): ${logError.message}`);
+        console.error('[contract-alerts] erro ao gravar contract_alert_log:', logError);
+      }
       sent.push({ contractId, type: alertType });
       console.log(`[contract-alerts] enviado: contrato=${contractId} tipo=${alertType} para=${recipients.join(', ')}`);
     } catch (error) {
@@ -56,9 +67,13 @@ export async function GET(request: Request) {
   }
 
   // Vencimento: reaproveita a view contracts_expiring (já filtra status ativo e a janela de aviso).
-  const { data: expiring } = await supabase
+  const { data: expiring, error: expiringError } = await supabase
     .from('contracts_expiring')
     .select('id, title, end_date, renewal_notice_days, alert_emails, days_until_expiration');
+  if (expiringError) {
+    queryErrors.push(`contracts_expiring: ${expiringError.message}`);
+    console.error('[contract-alerts] erro ao consultar contracts_expiring:', expiringError);
+  }
 
   for (const contract of expiring ?? []) {
     if (!contract.alert_emails || !contract.end_date) continue;
@@ -78,12 +93,16 @@ export async function GET(request: Request) {
 
   // Reajuste: precisa ser calculado (não existe uma view pronta, já que depende do período de
   // reajuste em meses a partir do início da vigência).
-  const { data: readjustable } = await supabase
+  const { data: readjustable, error: readjustableError } = await supabase
     .from('contracts')
     .select('id, title, start_date, renewal_notice_days, readjustment_period_months, alert_emails')
     .eq('status', 'ativo')
     .not('readjustment_period_months', 'is', null)
     .not('alert_emails', 'is', null);
+  if (readjustableError) {
+    queryErrors.push(`contracts (reajuste): ${readjustableError.message}`);
+    console.error('[contract-alerts] erro ao consultar contracts para reajuste:', readjustableError);
+  }
 
   for (const contract of readjustable ?? []) {
     if (!contract.alert_emails || !contract.readjustment_period_months) continue;
@@ -105,5 +124,5 @@ export async function GET(request: Request) {
   }
 
   console.log(`[contract-alerts] execução concluída: ${sent.length} enviado(s), ${failed.length} falha(s)`);
-  return NextResponse.json({ sent, failed });
+  return NextResponse.json({ sent, failed, queryErrors });
 }
