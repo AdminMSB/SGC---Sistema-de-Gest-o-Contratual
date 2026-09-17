@@ -10,9 +10,11 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   CONTRACT_DETAIL_TYPE_LABELS,
   CONTRACT_TYPE_LABELS,
+  DEPARTMENT_LABELS,
   READJUSTMENT_INDEX_LABELS,
   type ContractDetailType,
   type ContractType,
+  type Department,
   type ReadjustmentIndex,
 } from '@/types/domain';
 import { createContract, updateContract } from './actions';
@@ -23,6 +25,7 @@ const CONTRACT_DETAIL_TYPE_ENTRIES = Object.entries(CONTRACT_DETAIL_TYPE_LABELS)
   string,
 ][];
 const READJUSTMENT_INDEX_ENTRIES = Object.entries(READJUSTMENT_INDEX_LABELS) as [ReadjustmentIndex, string][];
+const DEPARTMENT_ENTRIES = Object.entries(DEPARTMENT_LABELS) as [Department, string][];
 
 export interface ManagerOption {
   id: string;
@@ -257,13 +260,18 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
             </div>
             <div>
               <Label htmlFor={`department-${mode}`}>Departamento/centro de custo</Label>
-              <Input
+              <Select
                 id={`department-${mode}`}
                 name="department"
-                type="text"
-                placeholder="Ex.: Engenharia"
                 defaultValue={contract?.department ?? ''}
-              />
+              >
+                <option value="">Não especificado</option>
+                {DEPARTMENT_ENTRIES.map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </Select>
             </div>
           </div>
 

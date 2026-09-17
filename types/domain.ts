@@ -13,6 +13,20 @@ export type ContractDetailType =
   | 'seguro_auto'
   | 'outro';
 export type ContractStatus = 'ativo' | 'encerrado' | 'cancelado';
+export type Department =
+  | 'administrativo'
+  | 'manutencao'
+  | 'garantia_qualidade'
+  | 'controle_qualidade'
+  | 'comercial_vendas'
+  | 'marketing'
+  | 'contabilidade'
+  | 'financeiro'
+  | 'producao'
+  | 'projetos_ti'
+  | 'engenharia'
+  | 'diretoria_executiva'
+  | 'juridico';
 export type ReadjustmentIndex = 'igpm' | 'ipca' | 'inpc' | 'outro';
 export type AmendmentStatus = 'em_analise' | 'assinado';
 
@@ -64,5 +78,21 @@ export const CONTRACT_STATUS_LABELS: Record<ContractStatus, string> = {
 export const AMENDMENT_STATUS_LABELS: Record<AmendmentStatus, string> = {
   em_analise: 'Em análise',
   assinado: 'Assinado',
+};
+
+export const DEPARTMENT_LABELS: Record<Department, string> = {
+  administrativo: 'Administrativo',
+  manutencao: 'Manutenção',
+  garantia_qualidade: 'Garantia da qualidade',
+  controle_qualidade: 'Controle de qualidade',
+  comercial_vendas: 'Comercial/Vendas',
+  marketing: 'Marketing',
+  contabilidade: 'Contabilidade',
+  financeiro: 'Financeiro',
+  producao: 'Produção',
+  projetos_ti: 'Projetos e TI',
+  engenharia: 'Engenharia',
+  diretoria_executiva: 'Diretoria executiva',
+  juridico: 'Jurídico',
 };
 

@@ -19,7 +19,9 @@ import {
   CONTRACT_DETAIL_TYPE_LABELS,
   CONTRACT_STATUS_LABELS,
   CONTRACT_TYPE_LABELS,
+  DEPARTMENT_LABELS,
   READJUSTMENT_INDEX_LABELS,
+  type Department,
 } from '@/types/domain';
 import { ContratoForm } from '../contrato-form';
 import {
@@ -185,7 +187,12 @@ export default async function ContratoDetalhePage({
         <CardContent>
           <div className="flex flex-col">
             {contract.internal_code && <DetailRow label="Código interno" value={contract.internal_code} />}
-            {contract.department && <DetailRow label="Departamento" value={contract.department} />}
+            {contract.department && (
+              <DetailRow
+                label="Departamento"
+                value={DEPARTMENT_LABELS[contract.department as Department] ?? contract.department}
+              />
+            )}
             {contract.internal_manager_id && managerNameById.get(contract.internal_manager_id) && (
               <DetailRow label="Gestor do contrato" value={managerNameById.get(contract.internal_manager_id)!} />
             )}
