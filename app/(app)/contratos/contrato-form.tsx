@@ -114,7 +114,6 @@ interface ExtractPdfResponse {
     readjustmentIndex: ReadjustmentIndex | null;
     readjustmentPeriodMonths: number | null;
   } | null;
-  highlights: { clauses: string[] } | null;
 }
 
 export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVariant }: ContratoFormProps) {
@@ -150,7 +149,7 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
       if (!response.ok) return;
 
       const data: ExtractPdfResponse = await response.json();
-      const { suggestions, highlights } = data;
+      const { suggestions } = data;
       if (!suggestions) {
         setExtractionNote('Não encontramos texto legível neste PDF para pré-preencher os campos.');
         return;
@@ -188,13 +187,6 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
           readjustmentIndexRef.current.value = suggestions.readjustmentIndex;
         }
       }
-
-      const clauses = highlights?.clauses ?? [];
-      setExtractionNote(
-        clauses.length > 0
-          ? `Detectamos no PDF: ${clauses.join(', ')}.`
-          : 'Campos pré-preenchidos a partir do PDF — confira antes de salvar.',
-      );
     } catch {
       // Extração é só uma conveniência; falha aqui não deve travar o cadastro manual.
     } finally {
