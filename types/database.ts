@@ -3,7 +3,6 @@
 
 import type {
   AmendmentStatus,
-  ContractDetailType,
   ContractStatus,
   ContractType,
   ReadjustmentIndex,
@@ -50,7 +49,7 @@ export interface Database {
           title: string;
           counterparty: string;
           contract_type: ContractType;
-          contract_detail_type: ContractDetailType | null;
+          contract_detail_type: string | null;
           status: ContractStatus;
           start_date: string;
           end_date: string | null;
@@ -84,7 +83,7 @@ export interface Database {
           title: string;
           counterparty: string;
           contract_type?: ContractType;
-          contract_detail_type?: ContractDetailType | null;
+          contract_detail_type?: string | null;
           status?: ContractStatus;
           start_date: string;
           end_date?: string | null;

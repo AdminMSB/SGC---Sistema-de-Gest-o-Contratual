@@ -20,10 +20,6 @@ import {
 import { createContract, updateContract } from './actions';
 
 const CONTRACT_TYPE_ENTRIES = Object.entries(CONTRACT_TYPE_LABELS) as [ContractType, string][];
-const CONTRACT_DETAIL_TYPE_ENTRIES = Object.entries(CONTRACT_DETAIL_TYPE_LABELS) as [
-  ContractDetailType,
-  string,
-][];
 const READJUSTMENT_INDEX_ENTRIES = Object.entries(READJUSTMENT_INDEX_LABELS) as [ReadjustmentIndex, string][];
 const DEPARTMENT_ENTRIES = Object.entries(DEPARTMENT_LABELS) as [Department, string][];
 
@@ -36,7 +32,7 @@ export interface ContractDefaults {
   id: string;
   title: string;
   contract_type: ContractType;
-  contract_detail_type: ContractDetailType | null;
+  contract_detail_type: string | null;
   start_date: string;
   end_date: string | null;
   renewal_notice_days: number;
@@ -130,7 +126,7 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
   const amountRef = useRef<HTMLInputElement>(null);
   const cnpjRef = useRef<HTMLInputElement>(null);
   const contractTypeRef = useRef<HTMLSelectElement>(null);
-  const contractDetailTypeRef = useRef<HTMLSelectElement>(null);
+  const contractDetailTypeRef = useRef<HTMLInputElement>(null);
   const readjustmentIndexRef = useRef<HTMLSelectElement>(null);
   const readjustmentPeriodRef = useRef<HTMLInputElement>(null);
   const action = mode === 'edit' ? updateContract : createContract;
@@ -180,8 +176,8 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
         if (suggestions.contractType && contractTypeRef.current) {
           contractTypeRef.current.value = suggestions.contractType;
         }
-        if (suggestions.contractDetailType && contractDetailTypeRef.current) {
-          contractDetailTypeRef.current.value = suggestions.contractDetailType;
+        if (suggestions.contractDetailType && contractDetailTypeRef.current && !contractDetailTypeRef.current.value) {
+          contractDetailTypeRef.current.value = CONTRACT_DETAIL_TYPE_LABELS[suggestions.contractDetailType];
         }
         if (suggestions.readjustmentIndex && readjustmentIndexRef.current) {
           readjustmentIndexRef.current.value = suggestions.readjustmentIndex;
@@ -324,19 +320,19 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
             </div>
             <div>
               <Label htmlFor={`contractDetailType-${mode}`}>Detalhamento</Label>
-              <Select
+              <Input
                 ref={contractDetailTypeRef}
                 id={`contractDetailType-${mode}`}
                 name="contractDetailType"
-                defaultValue={contract?.contract_detail_type ?? ''}
-              >
-                <option value="">Não especificado</option>
-                {CONTRACT_DETAIL_TYPE_ENTRIES.map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </Select>
+                type="text"
+                placeholder="Ex.: Manutenção, Licença de uso..."
+                defaultValue={
+                  (contract?.contract_detail_type &&
+                    CONTRACT_DETAIL_TYPE_LABELS[contract.contract_detail_type as ContractDetailType]) ??
+                  contract?.contract_detail_type ??
+                  ''
+                }
+              />
             </div>
           </div>
 

@@ -21,6 +21,7 @@ import {
   CONTRACT_TYPE_LABELS,
   DEPARTMENT_LABELS,
   READJUSTMENT_INDEX_LABELS,
+  type ContractDetailType,
   type Department,
 } from '@/types/domain';
 import { ContratoForm } from '../contrato-form';
@@ -198,7 +199,13 @@ export default async function ContratoDetalhePage({
             )}
             <DetailRow label="Categoria" value={CONTRACT_TYPE_LABELS[contract.contract_type]} />
             {contract.contract_detail_type && (
-              <DetailRow label="Detalhamento" value={CONTRACT_DETAIL_TYPE_LABELS[contract.contract_detail_type]} />
+              <DetailRow
+                label="Detalhamento"
+                value={
+                  CONTRACT_DETAIL_TYPE_LABELS[contract.contract_detail_type as ContractDetailType] ??
+                  contract.contract_detail_type
+                }
+              />
             )}
             {contract.counterparty_cnpj && (
               <DetailRow label="CNPJ da contraparte" value={contract.counterparty_cnpj} />
