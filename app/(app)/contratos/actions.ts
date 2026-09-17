@@ -433,8 +433,12 @@ export async function updateAmendmentStatus(formData: FormData) {
     fail('Dados inválidos.');
   }
 
-  const { error } = await supabase.from('contract_amendments').update({ status }).eq('id', amendmentId);
-  if (error) fail('Não foi possível atualizar o status do aditivo.');
+  const { data, error } = await supabase
+    .from('contract_amendments')
+    .update({ status })
+    .eq('id', amendmentId)
+    .select('id');
+  if (error || !data || data.length === 0) fail('Não foi possível atualizar o status do aditivo.');
 
   revalidatePath(`/contratos/${contractId}`);
   redirect(`/contratos/${contractId}`);
