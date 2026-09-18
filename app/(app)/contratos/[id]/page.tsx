@@ -25,6 +25,10 @@ import { ContratoForm } from '../contrato-form';
 import { AmendmentStatusForm } from '../amendment-status-form';
 import { addAmendment, deleteAmendment, deleteContract, updateContractStatus } from '../actions';
 
+// URL assinada de longa duração — a página fica aberta enquanto a pessoa revisa o contrato,
+// e um link que expira em minutos gera "exp claim timestamp check failed" ao clicar depois.
+const SIGNED_URL_TTL_SECONDS = 60 * 60;
+
 function ExtractedHighlightsCard({ highlights }: { highlights: ExtractedHighlights | null }) {
   if (!highlights) return null;
 
@@ -122,7 +126,9 @@ export default async function ContratoDetalhePage({
 
   let fileUrl: string | null = null;
   if (contract.file_path) {
-    const { data: signed } = await supabase.storage.from('contracts').createSignedUrl(contract.file_path, 300);
+    const { data: signed } = await supabase.storage
+      .from('contracts')
+      .createSignedUrl(contract.file_path, SIGNED_URL_TTL_SECONDS);
     fileUrl = signed?.signedUrl ?? null;
   }
 
@@ -130,7 +136,7 @@ export default async function ContratoDetalhePage({
   if (contract.distrato_file_path) {
     const { data: signed } = await supabase.storage
       .from('contracts')
-      .createSignedUrl(contract.distrato_file_path, 300);
+      .createSignedUrl(contract.distrato_file_path, SIGNED_URL_TTL_SECONDS);
     distratoFileUrl = signed?.signedUrl ?? null;
   }
 
@@ -141,7 +147,9 @@ export default async function ContratoDetalhePage({
   const amendmentFileUrls = new Map<string, string>();
   for (const amendment of amendments ?? []) {
     if (!amendment.file_path) continue;
-    const { data: signed } = await supabase.storage.from('contracts').createSignedUrl(amendment.file_path, 300);
+    const { data: signed } = await supabase.storage
+      .from('contracts')
+      .createSignedUrl(amendment.file_path, SIGNED_URL_TTL_SECONDS);
     if (signed?.signedUrl) amendmentFileUrls.set(amendment.id, signed.signedUrl);
   }
 
