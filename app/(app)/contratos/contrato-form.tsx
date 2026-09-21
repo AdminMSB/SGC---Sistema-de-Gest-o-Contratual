@@ -240,18 +240,6 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
             />
           </div>
 
-          <div>
-            <Label htmlFor={`counterpartyCnpj-${mode}`}>CNPJ da contraparte</Label>
-            <Input
-              ref={cnpjRef}
-              id={`counterpartyCnpj-${mode}`}
-              name="counterpartyCnpj"
-              type="text"
-              placeholder="00.000.000/0000-00"
-              defaultValue={contract?.counterparty_cnpj ?? ''}
-            />
-          </div>
-
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor={`contractType-${mode}`}>Categoria</Label>
@@ -286,60 +274,6 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
               />
             </div>
           </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor={`representativeName-${mode}`}>Contato</Label>
-              <Input
-                id={`representativeName-${mode}`}
-                name="representativeName"
-                type="text"
-                placeholder="Nome da pessoa de contato"
-                defaultValue={contract?.representative_name ?? ''}
-              />
-            </div>
-            <div>
-              <Label htmlFor={`contactEmail-${mode}`}>E-mail de contato</Label>
-              <Input
-                id={`contactEmail-${mode}`}
-                name="contactEmail"
-                type="email"
-                placeholder="contato@empresa.com"
-                defaultValue={contract?.contact_email ?? ''}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor={`contactPhone-${mode}`}>Telefone de contato</Label>
-              <Input
-                id={`contactPhone-${mode}`}
-                name="contactPhone"
-                type="text"
-                placeholder="(00) 00000-0000"
-                defaultValue={contract?.contact_phone ?? ''}
-              />
-            </div>
-            <div>
-              <Label htmlFor={`contactPhone2-${mode}`}>Telefone de contato (2)</Label>
-              <Input
-                id={`contactPhone2-${mode}`}
-                name="contactPhone2"
-                type="text"
-                placeholder="(00) 00000-0000"
-                defaultValue={contract?.contact_phone_2 ?? ''}
-              />
-            </div>
-          </div>
-
-          <CheckboxField
-            id={`isWhatsapp-${mode}`}
-            name="isWhatsapp"
-            label="Um dos telefones acima é WhatsApp"
-            checked={isWhatsapp}
-            onChange={setIsWhatsapp}
-          />
 
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -479,7 +413,77 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
           )}
 
           <h2 className="border-t border-border pt-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Dados internos
+            Dados do fornecedor
+          </h2>
+
+          <div>
+            <Label htmlFor={`counterpartyCnpj-${mode}`}>CNPJ Fornecedor</Label>
+            <Input
+              ref={cnpjRef}
+              id={`counterpartyCnpj-${mode}`}
+              name="counterpartyCnpj"
+              type="text"
+              placeholder="00.000.000/0000-00"
+              defaultValue={contract?.counterparty_cnpj ?? ''}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor={`representativeName-${mode}`}>Contato</Label>
+              <Input
+                id={`representativeName-${mode}`}
+                name="representativeName"
+                type="text"
+                placeholder="Nome da pessoa de contato"
+                defaultValue={contract?.representative_name ?? ''}
+              />
+            </div>
+            <div>
+              <Label htmlFor={`contactEmail-${mode}`}>Email</Label>
+              <Input
+                id={`contactEmail-${mode}`}
+                name="contactEmail"
+                type="email"
+                placeholder="contato@empresa.com"
+                defaultValue={contract?.contact_email ?? ''}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor={`contactPhone-${mode}`}>Telefone de contato</Label>
+              <Input
+                id={`contactPhone-${mode}`}
+                name="contactPhone"
+                type="text"
+                placeholder="(00) 00000-0000"
+                defaultValue={contract?.contact_phone ?? ''}
+              />
+            </div>
+            <div>
+              <Label htmlFor={`contactPhone2-${mode}`}>Telefone de contato (2)</Label>
+              <Input
+                id={`contactPhone2-${mode}`}
+                name="contactPhone2"
+                type="text"
+                placeholder="(00) 00000-0000"
+                defaultValue={contract?.contact_phone_2 ?? ''}
+              />
+            </div>
+          </div>
+
+          <CheckboxField
+            id={`isWhatsapp-${mode}`}
+            name="isWhatsapp"
+            label="Um dos telefones acima é WhatsApp"
+            checked={isWhatsapp}
+            onChange={setIsWhatsapp}
+          />
+
+          <h2 className="border-t border-border pt-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Informações gerenciais internas
           </h2>
 
           <div className="grid grid-cols-2 gap-4">
@@ -502,7 +506,7 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
               </p>
             </div>
             <div>
-              <Label htmlFor={`internalCode-${mode}`}>Número/código interno</Label>
+              <Label htmlFor={`internalCode-${mode}`}>Código D365</Label>
               <Input
                 id={`internalCode-${mode}`}
                 name="internalCode"
@@ -515,7 +519,7 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor={`department-${mode}`}>Departamento/centro de custo</Label>
+              <Label htmlFor={`department-${mode}`}>Centro de custo</Label>
               <Select id={`department-${mode}`} name="department" defaultValue={contract?.department ?? ''}>
                 <option value="">Não especificado</option>
                 {DEPARTMENT_ENTRIES.map(([value, label]) => (

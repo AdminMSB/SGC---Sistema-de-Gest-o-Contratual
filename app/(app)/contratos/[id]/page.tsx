@@ -203,22 +203,14 @@ export default async function ContratoDetalhePage({
       )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
+      <div className="flex flex-col gap-6">
       <Card>
         <CardHeader>
           <CardTitle>Dados do contrato</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex max-w-2xl flex-col">
-            {contract.internal_code && <DetailRow label="Código interno" value={contract.internal_code} />}
-            {contract.department && (
-              <DetailRow
-                label="Departamento"
-                value={DEPARTMENT_LABELS[contract.department as Department] ?? contract.department}
-              />
-            )}
-            {contract.internal_manager_id && profileNameById.get(contract.internal_manager_id) && (
-              <DetailRow label="Gestor do contrato" value={profileNameById.get(contract.internal_manager_id)!} />
-            )}
+            <DetailRow label="Status" value={<ContractStatusBadge status={displayStatus} />} />
             <DetailRow label="Categoria" value={CONTRACT_TYPE_LABELS[contract.contract_type]} />
             {contract.contract_detail_type && (
               <DetailRow
@@ -229,24 +221,6 @@ export default async function ContratoDetalhePage({
                 }
               />
             )}
-            {contract.counterparty_cnpj && (
-              <DetailRow label="CNPJ da contraparte" value={contract.counterparty_cnpj} />
-            )}
-            {contract.representative_name && (
-              <DetailRow label="Contato" value={contract.representative_name} />
-            )}
-            {contract.contact_email && <DetailRow label="E-mail de contato" value={contract.contact_email} />}
-            {contract.contact_phone && (
-              <DetailRow
-                label="Telefone de contato"
-                value={contract.is_whatsapp ? `${contract.contact_phone} (WhatsApp)` : contract.contact_phone}
-              />
-            )}
-            {contract.contact_phone_2 && (
-              <DetailRow label="Telefone de contato (2)" value={contract.contact_phone_2} />
-            )}
-            {contract.alert_emails && <DetailRow label="E-mails para alerta" value={contract.alert_emails} />}
-            <DetailRow label="Status" value={<ContractStatusBadge status={displayStatus} />} />
             <DetailRow label="Início da vigência" value={formatDate(contract.start_date)} />
             <DetailRow
               label="Fim da vigência"
@@ -320,8 +294,56 @@ export default async function ContratoDetalhePage({
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader>
+          <CardTitle>Dados do fornecedor</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex max-w-2xl flex-col">
+            {contract.counterparty_cnpj && (
+              <DetailRow label="CNPJ Fornecedor" value={contract.counterparty_cnpj} />
+            )}
+            {contract.representative_name && (
+              <DetailRow label="Contato" value={contract.representative_name} />
+            )}
+            {contract.contact_email && <DetailRow label="Email" value={contract.contact_email} />}
+            {contract.contact_phone && (
+              <DetailRow
+                label="Telefone de contato"
+                value={contract.is_whatsapp ? `${contract.contact_phone} (WhatsApp)` : contract.contact_phone}
+              />
+            )}
+            {contract.contact_phone_2 && (
+              <DetailRow label="Telefone de contato (2)" value={contract.contact_phone_2} />
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Informações gerenciais internas</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex max-w-2xl flex-col">
+            {contract.internal_manager_id && profileNameById.get(contract.internal_manager_id) && (
+              <DetailRow label="Gestor do contrato" value={profileNameById.get(contract.internal_manager_id)!} />
+            )}
+            {contract.internal_code && <DetailRow label="Código D365" value={contract.internal_code} />}
+            {contract.department && (
+              <DetailRow
+                label="Centro de custo"
+                value={DEPARTMENT_LABELS[contract.department as Department] ?? contract.department}
+              />
+            )}
+            {contract.alert_emails && <DetailRow label="E-mails para alerta" value={contract.alert_emails} />}
+          </div>
+        </CardContent>
+      </Card>
+      </div>
+
       {fileUrl && (
-        <Card>
+        <Card className="lg:sticky lg:top-6">
           <CardHeader>
             <CardTitle>Visualizar contrato</CardTitle>
           </CardHeader>
