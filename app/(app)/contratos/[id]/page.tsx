@@ -3,7 +3,8 @@ import { notFound } from 'next/navigation';
 import { requireProfile } from '@/lib/auth';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { formatCurrencyCents, formatDate, formatDateTime } from '@/lib/format';
-import { computeDisplayStatus } from '@/lib/contract-status';
+import { computeDisplayStatus, computeVigenciaCountdown } from '@/lib/contract-status';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -95,6 +96,7 @@ export default async function ContratoDetalhePage({
   const profileNameById = new Map((profiles ?? []).map((profile) => [profile.id, profile.full_name]));
   const amendmentCount = (amendments ?? []).length;
   const displayStatus = computeDisplayStatus(contract.status, contract.end_date);
+  const vigenciaCountdown = computeVigenciaCountdown(contract.end_date);
 
   const amendmentFileUrls = new Map<string, string>();
   for (const amendment of amendments ?? []) {
@@ -166,7 +168,16 @@ export default async function ContratoDetalhePage({
             <DetailRow label="Início da vigência" value={formatDate(contract.start_date)} />
             <DetailRow
               label="Fim da vigência"
-              value={contract.end_date ? formatDate(contract.end_date) : 'Indeterminado'}
+              value={
+                contract.end_date ? (
+                  <span className="flex flex-wrap items-center gap-2">
+                    {formatDate(contract.end_date)}
+                    {vigenciaCountdown && <Badge tone={vigenciaCountdown.tone}>{vigenciaCountdown.label}</Badge>}
+                  </span>
+                ) : (
+                  'Indeterminado'
+                )
+              }
             />
             <DetailRow label="Aviso prévio" value={`${contract.renewal_notice_days} dia(s)`} />
             <DetailRow
@@ -276,10 +287,7 @@ export default async function ContratoDetalhePage({
 
       {fileUrl && (
         <Card className="lg:sticky lg:top-6">
-          <CardHeader>
-            <CardTitle>Visualizar contrato</CardTitle>
-          </CardHeader>
-          <CardContent>
+          <CardContent className="pt-4 sm:pt-6">
             <iframe
               src={fileUrl}
               title="Arquivo do contrato (PDF)"
