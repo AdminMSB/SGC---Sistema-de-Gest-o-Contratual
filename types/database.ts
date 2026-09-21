@@ -29,20 +29,6 @@ export interface Database {
         Update: Partial<Database['public']['Tables']['profiles']['Insert']>;
         Relationships: [];
       };
-      contract_managers: {
-        Row: {
-          id: string;
-          full_name: string;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          full_name: string;
-          created_at?: string;
-        };
-        Update: Partial<Database['public']['Tables']['contract_managers']['Insert']>;
-        Relationships: [];
-      };
       contracts: {
         Row: {
           id: string;

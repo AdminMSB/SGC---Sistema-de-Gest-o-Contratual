@@ -17,7 +17,7 @@ export default async function ContratosPage({
       .from('contracts')
       .select('id, title, contract_type, status, end_date, total_amount_cents, is_variable_value')
       .order('created_at', { ascending: false }),
-    supabase.from('contract_managers').select('id, full_name').order('full_name'),
+    supabase.from('profiles').select('id, full_name').eq('role', 'gestor').order('full_name'),
   ]);
 
   return (

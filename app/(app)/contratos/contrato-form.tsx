@@ -498,7 +498,7 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
                 ))}
               </Select>
               <p className="mt-1 text-xs text-muted-foreground">
-                Lista gerenciada em Configurações → Gestores.
+                Lista de usuários com papel Gestor, gerenciada em Configurações → Usuários.
               </p>
             </div>
             <div>

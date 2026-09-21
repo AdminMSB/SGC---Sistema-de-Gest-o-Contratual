@@ -9,7 +9,7 @@ import { createAdminSupabaseClient } from '@/lib/supabase/admin';
 import type { Role } from '@/types/domain';
 
 const BASE_PATH = '/configuracoes/usuarios';
-const ROLE_VALUES: Role[] = ['membro', 'admin'];
+const ROLE_VALUES: Role[] = ['membro', 'gestor', 'admin'];
 
 function redirectWithError(message: string): never {
   redirect(`${BASE_PATH}?error=${encodeURIComponent(message)}`);

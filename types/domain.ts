@@ -1,4 +1,4 @@
-export type Role = 'membro' | 'admin';
+export type Role = 'membro' | 'gestor' | 'admin';
 
 export type ContractType = 'servico' | 'locacao' | 'fornecimento' | 'comodato' | 'consultoria';
 export type ContractDetailType =
@@ -38,6 +38,7 @@ export interface CurrentProfile {
 
 export const ROLE_LABELS: Record<Role, string> = {
   membro: 'Membro',
+  gestor: 'Gestor',
   admin: 'Administrador',
 };
 

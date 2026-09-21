@@ -9,6 +9,7 @@ import { InviteUserDialog, EditRoleDialog } from './usuarios-form';
 
 const ROLE_TONES: Record<Role, BadgeTone> = {
   membro: 'neutral',
+  gestor: 'warning',
   admin: 'success',
 };
 

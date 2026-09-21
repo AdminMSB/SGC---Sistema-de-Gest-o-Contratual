@@ -108,10 +108,9 @@ export default async function ContratoDetalhePage({
   const { data: contract } = await supabase.from('contracts').select('*').eq('id', params.id).single();
   if (!contract) notFound();
 
-  const [{ data: managers }, { data: profiles }, { data: amendments }, { data: statusHistory }] =
+  const [{ data: profiles }, { data: amendments }, { data: statusHistory }] =
     await Promise.all([
-      supabase.from('contract_managers').select('id, full_name').order('full_name'),
-      supabase.from('profiles').select('id, full_name').order('full_name'),
+      supabase.from('profiles').select('id, full_name, role').order('full_name'),
       supabase
         .from('contract_amendments')
         .select('*')
@@ -140,7 +139,7 @@ export default async function ContratoDetalhePage({
     distratoFileUrl = signed?.signedUrl ?? null;
   }
 
-  const managerNameById = new Map((managers ?? []).map((manager) => [manager.id, manager.full_name]));
+  const managers = (profiles ?? []).filter((profile) => profile.role === 'gestor');
   const profileNameById = new Map((profiles ?? []).map((profile) => [profile.id, profile.full_name]));
   const amendmentCount = (amendments ?? []).length;
 
@@ -168,7 +167,7 @@ export default async function ContratoDetalhePage({
           <h1 className="text-2xl font-semibold">{contract.title}</h1>
         </div>
         <div className="flex items-center gap-2">
-          <ContratoForm mode="edit" contract={contract} managers={managers ?? []} triggerVariant="secondary" />
+          <ContratoForm mode="edit" contract={contract} managers={managers} triggerVariant="secondary" />
           {profile.role === 'admin' && (
             <ConfirmSubmitForm
               action={deleteContract}
@@ -194,8 +193,8 @@ export default async function ContratoDetalhePage({
                 value={DEPARTMENT_LABELS[contract.department as Department] ?? contract.department}
               />
             )}
-            {contract.internal_manager_id && managerNameById.get(contract.internal_manager_id) && (
-              <DetailRow label="Gestor do contrato" value={managerNameById.get(contract.internal_manager_id)!} />
+            {contract.internal_manager_id && profileNameById.get(contract.internal_manager_id) && (
+              <DetailRow label="Gestor do contrato" value={profileNameById.get(contract.internal_manager_id)!} />
             )}
             <DetailRow label="Categoria" value={CONTRACT_TYPE_LABELS[contract.contract_type]} />
             {contract.contract_detail_type && (

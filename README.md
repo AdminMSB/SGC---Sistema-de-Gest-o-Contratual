@@ -26,7 +26,8 @@ isso é tratado em outro sistema.
 | Perfil | Pode fazer |
 |---|---|
 | `membro` | Cadastrar, editar e acompanhar contratos, aditivos e distratos |
-| `admin` | Tudo do membro + excluir contratos + gerenciar usuários, gestores e papéis |
+| `gestor` | Igual ao membro, e também aparece na lista de "Gestor do contrato" das telas de contrato |
+| `admin` | Tudo do membro + excluir contratos + gerenciar usuários e papéis |
 
 Sem fluxo de aprovação — é uma ferramenta interna para manter o controle centralizado dos
 contratos, não um workflow de compras.
@@ -53,10 +54,9 @@ contratos, não um workflow de compras.
    ```
    O trigger `handle_new_user` cria automaticamente a linha em `profiles` com esse papel. Os
    demais usuários podem ser convidados depois pela própria tela **Configurações → Usuários**
-   (usa a Auth Admin API com a `service_role key`).
-7. Cadastre os gestores de contrato em **Configurações → Gestores** (lista própria, independente
-   dos usuários do sistema).
-8. No bucket de Storage (`contracts`, criado pela migration `0004_storage.sql`), nada mais
+   (usa a Auth Admin API com a `service_role key`). Quem deve aparecer como opção de "Gestor do
+   contrato" precisa ser convidado com o papel **Gestor**.
+7. No bucket de Storage (`contracts`, criado pela migration `0004_storage.sql`), nada mais
    precisa ser feito manualmente — a política de acesso já é aplicada via SQL.
 
 ## Rodando localmente
@@ -97,7 +97,6 @@ app/
   (app)/contratos/           — lista, cadastro/edição, upload do PDF
   (app)/contratos/[id]/      — detalhe: dados do contrato, aditivos, histórico de status
   (app)/configuracoes/usuarios/ — gestão de usuários e papéis (admin)
-  (app)/configuracoes/gestores/ — gestão da lista de "Gestor do contrato" (admin)
   api/extract-pdf/           — preview da extração de destaques do PDF (usado pelo formulário)
   api/cron/contract-alerts/  — job diário de alerta de vencimento/reajuste por e-mail
 lib/
