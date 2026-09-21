@@ -261,34 +261,8 @@ export default async function ContratoDetalhePage({
             {contract.contact_phone_2 && (
               <DetailRow label="Telefone de contato (2)" value={contract.contact_phone_2} />
             )}
-            <DetailRow
-              label="Arquivo do contrato"
-              value={
-                fileUrl ? (
-                  <a href={fileUrl} target="_blank" rel="noreferrer" className="text-primary hover:underline">
-                    Baixar PDF
-                  </a>
-                ) : (
-                  '—'
-                )
-              }
-            />
-            <DetailRow
-              label="Distrato"
-              value={
-                contract.has_distrato ? (
-                  distratoFileUrl ? (
-                    <a href={distratoFileUrl} target="_blank" rel="noreferrer" className="text-primary hover:underline">
-                      Sim — Baixar PDF
-                    </a>
-                  ) : (
-                    'Sim'
-                  )
-                ) : (
-                  'Não'
-                )
-              }
-            />
+            <DetailRow label="Arquivo do contrato" value={fileUrl ? 'Sim' : 'Não'} />
+            <DetailRow label="Distrato" value={contract.has_distrato ? 'Sim' : 'Não'} />
             <DetailRow
               label="Aditivo"
               value={amendmentCount > 0 ? `Sim (${amendmentCount})` : 'Não'}
@@ -358,7 +332,6 @@ export default async function ContratoDetalhePage({
                 <TableHead>Nome do documento</TableHead>
                 <TableHead>Resumo</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Documento</TableHead>
                 <TableHead className="w-0" />
               </TableRow>
             </TableHeader>
@@ -370,20 +343,6 @@ export default async function ContratoDetalhePage({
                   <TableCell>{amendment.description}</TableCell>
                   <TableCell>
                     <AmendmentStatusForm amendmentId={amendment.id} contractId={contract.id} status={amendment.status} />
-                  </TableCell>
-                  <TableCell>
-                    {amendmentFileUrls.has(amendment.id) ? (
-                      <a
-                        href={amendmentFileUrls.get(amendment.id)}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-primary hover:underline"
-                      >
-                        Baixar PDF
-                      </a>
-                    ) : (
-                      '—'
-                    )}
                   </TableCell>
                   <TableCell>
                     <ConfirmSubmitForm
@@ -400,7 +359,7 @@ export default async function ContratoDetalhePage({
               ))}
               {(amendments ?? []).length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground">
+                  <TableCell colSpan={5} className="text-center text-muted-foreground">
                     Nenhum aditivo registrado.
                   </TableCell>
                 </TableRow>
