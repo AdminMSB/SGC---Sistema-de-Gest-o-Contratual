@@ -172,7 +172,14 @@ export default async function ContratoDetalhePage({
                 contract.end_date ? (
                   <span className="flex flex-wrap items-center gap-2">
                     {formatDate(contract.end_date)}
-                    {vigenciaCountdown && <Badge tone={vigenciaCountdown.tone}>{vigenciaCountdown.label}</Badge>}
+                    {vigenciaCountdown && (
+                      <Badge
+                        tone={vigenciaCountdown.tone}
+                        className={vigenciaCountdown.tone !== 'neutral' ? 'animate-pulse' : undefined}
+                      >
+                        {vigenciaCountdown.label}
+                      </Badge>
+                    )}
                   </span>
                 ) : (
                   'Indeterminado'
