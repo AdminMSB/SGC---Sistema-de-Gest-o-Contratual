@@ -4,7 +4,6 @@ import { requireProfile } from '@/lib/auth';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { formatCurrencyCents, formatDate, formatDateTime } from '@/lib/format';
 import { computeDisplayStatus } from '@/lib/contract-status';
-import type { ExtractedHighlights } from '@/lib/pdf-extract';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -32,63 +31,6 @@ import { addAmendment, deleteAmendment, deleteContract, updateContractStatus } f
 // URL assinada de longa duração — a página fica aberta enquanto a pessoa revisa o contrato,
 // e um link que expira em minutos gera "exp claim timestamp check failed" ao clicar depois.
 const SIGNED_URL_TTL_SECONDS = 60 * 60;
-
-function ExtractedHighlightsCard({ highlights }: { highlights: ExtractedHighlights | null }) {
-  if (!highlights) return null;
-
-  const hasContent =
-    highlights.dates.length > 0 ||
-    highlights.amountsCents.length > 0 ||
-    highlights.cnpjs.length > 0 ||
-    highlights.clauses.length > 0 ||
-    highlights.duration != null ||
-    highlights.objectSummary != null;
-  if (!hasContent) return null;
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Destaques extraídos do PDF</CardTitle>
-        <CardDescription>
-          Identificados automaticamente por padrões de texto no arquivo enviado — confira sempre
-          contra o documento original.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="flex max-w-2xl flex-col">
-          {highlights.objectSummary && <DetailRow label="Objeto (extraído do PDF)" value={highlights.objectSummary} />}
-          {highlights.dates.length > 0 && (
-            <DetailRow label="Datas encontradas" value={highlights.dates.map(formatDate).join(', ')} />
-          )}
-          {highlights.amountsCents.length > 0 && (
-            <DetailRow
-              label="Valores encontrados"
-              value={highlights.amountsCents.map(formatCurrencyCents).join(', ')}
-            />
-          )}
-          {highlights.duration != null && (
-            <DetailRow
-              label="Prazo de vigência mencionado"
-              value={`${highlights.duration.amount} ${highlights.duration.unit}`}
-            />
-          )}
-          {highlights.readjustmentPeriodMonths != null && (
-            <DetailRow
-              label="Período de reajuste mencionado"
-              value={`${highlights.readjustmentPeriodMonths} mês(es)`}
-            />
-          )}
-          {highlights.cnpjs.length > 0 && (
-            <DetailRow label="CNPJs encontrados" value={highlights.cnpjs.join(', ')} />
-          )}
-          {highlights.clauses.length > 0 && (
-            <DetailRow label="Cláusulas notáveis" value={highlights.clauses.join(', ')} />
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
 
 const CLOSURE_BANNER_CLASSES: Record<ClosureReason, string> = {
   inativo: 'border-border bg-muted text-muted-foreground',
@@ -206,7 +148,7 @@ export default async function ContratoDetalhePage({
       <div className="flex flex-col gap-6">
       <Card>
         <CardHeader>
-          <CardTitle>Dados do contrato</CardTitle>
+          <CardTitle>Dados do contrato e do fornecedor</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex max-w-2xl flex-col">
@@ -245,6 +187,22 @@ export default async function ContratoDetalhePage({
               <DetailRow label="Pagamento variável adicional" value={contract.variable_payment_note} />
             )}
             {contract.notes && <DetailRow label="Observações" value={contract.notes} />}
+            {contract.counterparty_cnpj && (
+              <DetailRow label="CNPJ Fornecedor" value={contract.counterparty_cnpj} />
+            )}
+            {contract.representative_name && (
+              <DetailRow label="Contato" value={contract.representative_name} />
+            )}
+            {contract.contact_email && <DetailRow label="Email" value={contract.contact_email} />}
+            {contract.contact_phone && (
+              <DetailRow
+                label="Telefone de contato"
+                value={contract.is_whatsapp ? `${contract.contact_phone} (WhatsApp)` : contract.contact_phone}
+              />
+            )}
+            {contract.contact_phone_2 && (
+              <DetailRow label="Telefone de contato (2)" value={contract.contact_phone_2} />
+            )}
             <DetailRow
               label="Arquivo do contrato"
               value={
@@ -296,33 +254,7 @@ export default async function ContratoDetalhePage({
 
       <Card>
         <CardHeader>
-          <CardTitle>Dados do fornecedor</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex max-w-2xl flex-col">
-            {contract.counterparty_cnpj && (
-              <DetailRow label="CNPJ Fornecedor" value={contract.counterparty_cnpj} />
-            )}
-            {contract.representative_name && (
-              <DetailRow label="Contato" value={contract.representative_name} />
-            )}
-            {contract.contact_email && <DetailRow label="Email" value={contract.contact_email} />}
-            {contract.contact_phone && (
-              <DetailRow
-                label="Telefone de contato"
-                value={contract.is_whatsapp ? `${contract.contact_phone} (WhatsApp)` : contract.contact_phone}
-              />
-            )}
-            {contract.contact_phone_2 && (
-              <DetailRow label="Telefone de contato (2)" value={contract.contact_phone_2} />
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Informações gerenciais internas</CardTitle>
+          <CardTitle>Dados gerenciais</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex max-w-2xl flex-col">
@@ -357,8 +289,6 @@ export default async function ContratoDetalhePage({
         </Card>
       )}
       </div>
-
-      <ExtractedHighlightsCard highlights={contract.extracted_highlights} />
 
       <Card>
         <CardHeader>
