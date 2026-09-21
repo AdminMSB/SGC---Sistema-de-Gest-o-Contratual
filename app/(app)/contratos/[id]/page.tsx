@@ -189,7 +189,7 @@ export default async function ContratoDetalhePage({
       <div className="flex flex-col gap-6">
       <Card>
         <CardHeader>
-          <CardTitle>Dados do contrato e do fornecedor</CardTitle>
+          <CardTitle>Dados do fornecedor/contrato</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex max-w-2xl flex-col">
