@@ -50,6 +50,7 @@ export interface Database {
           variable_payment_note: string | null;
           has_distrato: boolean;
           distrato_file_path: string | null;
+          distrato_date: string | null;
           representative_name: string | null;
           contact_email: string | null;
           contact_phone: string | null;
@@ -85,6 +86,7 @@ export interface Database {
           variable_payment_note?: string | null;
           has_distrato?: boolean;
           distrato_file_path?: string | null;
+          distrato_date?: string | null;
           representative_name?: string | null;
           contact_email?: string | null;
           contact_phone?: string | null;

@@ -55,6 +55,7 @@ export interface ContractDefaults {
   notes: string | null;
   file_path: string | null;
   distrato_file_path: string | null;
+  distrato_date: string | null;
 }
 
 interface ContratoFormProps {
@@ -400,15 +401,26 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
           </div>
 
           {hasDistrato && (
-            <div>
-              <Label htmlFor={`distratoFile-${mode}`}>Documento do distrato (PDF)</Label>
-              <Input id={`distratoFile-${mode}`} name="distratoFile" type="file" accept="application/pdf" />
-              <p className="mt-1 text-xs text-muted-foreground">
-                PDF, até 10MB.
-                {mode === 'edit' && contract?.distrato_file_path
-                  ? ' Envie um novo arquivo para substituir o atual.'
-                  : ''}
-              </p>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor={`distratoDate-${mode}`}>Data do distrato</Label>
+                <Input
+                  id={`distratoDate-${mode}`}
+                  name="distratoDate"
+                  type="date"
+                  defaultValue={contract?.distrato_date?.slice(0, 10) ?? ''}
+                />
+              </div>
+              <div>
+                <Label htmlFor={`distratoFile-${mode}`}>Documento do distrato (PDF)</Label>
+                <Input id={`distratoFile-${mode}`} name="distratoFile" type="file" accept="application/pdf" />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  PDF, até 10MB.
+                  {mode === 'edit' && contract?.distrato_file_path
+                    ? ' Envie um novo arquivo para substituir o atual.'
+                    : ''}
+                </p>
+              </div>
             </div>
           )}
 

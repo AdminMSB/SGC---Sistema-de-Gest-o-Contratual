@@ -4,7 +4,7 @@ import { requireProfile } from '@/lib/auth';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { formatCurrencyCents, formatDate, formatDateTime } from '@/lib/format';
 import { computeDisplayStatus, computeVigenciaCountdown } from '@/lib/contract-status';
-import { Badge } from '@/components/ui/badge';
+import { Badge, type BadgeTone } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -37,6 +37,12 @@ const CLOSURE_BANNER_CLASSES: Record<ClosureReason, string> = {
   inativo: 'border-border bg-muted text-muted-foreground',
   encerrado: 'border-border bg-muted text-muted-foreground',
   cancelado: 'border-destructive/30 bg-destructive/10 text-destructive',
+};
+
+const TIMELINE_TYPE_TONES: Record<'Contrato' | 'Aditivo' | 'Distrato', BadgeTone> = {
+  Contrato: 'info',
+  Aditivo: 'neutral',
+  Distrato: 'destructive',
 };
 
 function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
@@ -106,6 +112,40 @@ export default async function ContratoDetalhePage({
       .createSignedUrl(amendment.file_path, SIGNED_URL_TTL_SECONDS);
     if (signed?.signedUrl) amendmentFileUrls.set(amendment.id, signed.signedUrl);
   }
+
+  const timelineEntries: {
+    date: string;
+    type: 'Contrato' | 'Aditivo' | 'Distrato';
+    title: string;
+    description: string | null;
+    fileUrl: string | null;
+  }[] = [
+    {
+      date: contract.start_date,
+      type: 'Contrato' as const,
+      title: 'Assinatura do contrato',
+      description: contract.title,
+      fileUrl,
+    },
+    ...(amendments ?? []).map((amendment) => ({
+      date: amendment.amendment_date,
+      type: 'Aditivo' as const,
+      title: amendment.document_name ?? 'Aditivo',
+      description: amendment.description,
+      fileUrl: amendmentFileUrls.get(amendment.id) ?? null,
+    })),
+    ...(contract.has_distrato && contract.distrato_date
+      ? [
+          {
+            date: contract.distrato_date,
+            type: 'Distrato' as const,
+            title: 'Distrato',
+            description: null,
+            fileUrl: distratoFileUrl,
+          },
+        ]
+      : []),
+  ].sort((a, b) => a.date.localeCompare(b.date));
 
   return (
     <div className="flex flex-col gap-6">
@@ -394,6 +434,49 @@ export default async function ContratoDetalhePage({
               </Button>
             </div>
           </form>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Linha do tempo do contrato</CardTitle>
+          <CardDescription>
+            Assinatura, aditivos e distrato, em ordem cronológica pela data de cada documento.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Data</TableHead>
+                <TableHead>Tipo</TableHead>
+                <TableHead>Evento</TableHead>
+                <TableHead>Descrição</TableHead>
+                <TableHead>Documento</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {timelineEntries.map((entry, index) => (
+                <TableRow key={`${entry.type}-${entry.date}-${index}`}>
+                  <TableCell>{formatDate(entry.date)}</TableCell>
+                  <TableCell>
+                    <Badge tone={TIMELINE_TYPE_TONES[entry.type]}>{entry.type}</Badge>
+                  </TableCell>
+                  <TableCell>{entry.title}</TableCell>
+                  <TableCell>{entry.description ?? '—'}</TableCell>
+                  <TableCell>
+                    {entry.fileUrl ? (
+                      <a href={entry.fileUrl} target="_blank" rel="noreferrer" className="text-primary hover:underline">
+                        Baixar PDF
+                      </a>
+                    ) : (
+                      '—'
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
 
