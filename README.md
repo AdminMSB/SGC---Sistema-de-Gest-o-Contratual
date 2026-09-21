@@ -25,9 +25,9 @@ isso é tratado em outro sistema.
 
 | Perfil | Pode fazer |
 |---|---|
-| `membro` | Cadastrar, editar e acompanhar contratos, aditivos e distratos |
-| `gestor` | Igual ao membro, e também aparece na lista de "Gestor do contrato" das telas de contrato |
-| `admin` | Tudo do membro + excluir contratos + gerenciar usuários e papéis |
+| `fiscal` | Cadastrar, editar e acompanhar contratos, aditivos e distratos |
+| `gestor` | Igual ao fiscal, e também aparece na lista de "Gestor do contrato" das telas de contrato |
+| `admin` | Tudo do fiscal + excluir contratos + gerenciar usuários e papéis |
 
 Sem fluxo de aprovação — é uma ferramenta interna para manter o controle centralizado dos
 contratos, não um workflow de compras.

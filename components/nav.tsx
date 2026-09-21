@@ -11,12 +11,12 @@ interface NavItem {
   roles: Role[];
 }
 
-const ALL_ROLES: Role[] = ['membro', 'gestor', 'admin'];
+const ALL_ROLES: Role[] = ['fiscal', 'gestor', 'admin'];
 
 const NAV_ITEMS: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', roles: ALL_ROLES },
   { href: '/contratos', label: 'Contratos', roles: ALL_ROLES },
-  { href: '/configuracoes/usuarios', label: 'Usuários', roles: ['admin'] },
+  { href: '/configuracoes/usuarios', label: 'Configurações', roles: ['admin'] },
 ];
 
 export function Nav({ role }: { role: Role }) {

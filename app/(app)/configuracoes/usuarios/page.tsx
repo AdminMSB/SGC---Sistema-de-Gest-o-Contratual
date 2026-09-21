@@ -8,7 +8,7 @@ import { ROLE_LABELS, type Role } from '@/types/domain';
 import { InviteUserDialog, EditRoleDialog } from './usuarios-form';
 
 const ROLE_TONES: Record<Role, BadgeTone> = {
-  membro: 'neutral',
+  fiscal: 'neutral',
   gestor: 'warning',
   admin: 'success',
 };
@@ -35,8 +35,8 @@ export default async function UsuariosPage({
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">Usuários</h1>
-          <p className="text-sm text-muted-foreground">Cadastro de usuários e papéis.</p>
+          <h1 className="text-2xl font-semibold">Configurações</h1>
+          <p className="text-sm text-muted-foreground">Cadastro de usuários e papéis (Fiscal, Gestor, Administrador).</p>
         </div>
         <InviteUserDialog />
       </div>

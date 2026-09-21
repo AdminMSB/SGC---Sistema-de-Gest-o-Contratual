@@ -34,7 +34,7 @@ export function InviteUserDialog() {
 
           <div>
             <Label htmlFor="invite-role">Papel</Label>
-            <Select id="invite-role" name="role" defaultValue="membro" required>
+            <Select id="invite-role" name="role" defaultValue="fiscal" required>
               {ROLE_ENTRIES.map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
