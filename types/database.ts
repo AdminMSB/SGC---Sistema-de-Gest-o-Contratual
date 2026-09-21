@@ -3,6 +3,7 @@
 
 import type {
   AmendmentStatus,
+  ClosureReason,
   ContractStatus,
   ContractType,
   ReadjustmentIndex,
@@ -37,6 +38,7 @@ export interface Database {
           contract_type: ContractType;
           contract_detail_type: string | null;
           status: ContractStatus;
+          closure_reason: ClosureReason | null;
           start_date: string;
           end_date: string | null;
           renewal_notice_days: number;
@@ -71,6 +73,7 @@ export interface Database {
           contract_type?: ContractType;
           contract_detail_type?: string | null;
           status?: ContractStatus;
+          closure_reason?: ClosureReason | null;
           start_date: string;
           end_date?: string | null;
           renewal_notice_days?: number;

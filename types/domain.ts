@@ -15,6 +15,8 @@ export type ContractDetailType =
 export type ContractStatus = 'ativo' | 'encerrado';
 /** "expirado" não é um valor salvo no banco — é calculado a partir do fim da vigência. */
 export type ContractDisplayStatus = ContractStatus | 'expirado';
+/** Motivo escolhido ao marcar um contrato como encerrado — só faz sentido quando status = 'encerrado'. */
+export type ClosureReason = 'inativo' | 'encerrado' | 'cancelado';
 export type Department =
   | 'administrativo'
   | 'manutencao'
@@ -81,6 +83,12 @@ export const CONTRACT_DISPLAY_STATUS_LABELS: Record<ContractDisplayStatus, strin
   ativo: 'Ativo',
   expirado: 'Expirado',
   encerrado: 'Encerrado',
+};
+
+export const CLOSURE_REASON_LABELS: Record<ClosureReason, string> = {
+  inativo: 'Inativo',
+  encerrado: 'Encerrado',
+  cancelado: 'Cancelado',
 };
 
 export const AMENDMENT_STATUS_LABELS: Record<AmendmentStatus, string> = {

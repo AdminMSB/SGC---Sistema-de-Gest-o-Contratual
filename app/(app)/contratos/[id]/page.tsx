@@ -14,16 +14,19 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ContractStatusBadge } from '@/components/status-badge';
 import { ConfirmSubmitForm } from '@/components/confirm-submit-form';
 import {
+  CLOSURE_REASON_LABELS,
   CONTRACT_DETAIL_TYPE_LABELS,
   CONTRACT_STATUS_LABELS,
   CONTRACT_TYPE_LABELS,
   DEPARTMENT_LABELS,
   READJUSTMENT_INDEX_LABELS,
+  type ClosureReason,
   type ContractDetailType,
   type Department,
 } from '@/types/domain';
 import { ContratoForm } from '../contrato-form';
 import { AmendmentStatusForm } from '../amendment-status-form';
+import { CloseContractForm } from '../close-contract-form';
 import { addAmendment, deleteAmendment, deleteContract, updateContractStatus } from '../actions';
 
 // URL assinada de longa duração — a página fica aberta enquanto a pessoa revisa o contrato,
@@ -86,6 +89,12 @@ function ExtractedHighlightsCard({ highlights }: { highlights: ExtractedHighligh
     </Card>
   );
 }
+
+const CLOSURE_BANNER_CLASSES: Record<ClosureReason, string> = {
+  inativo: 'border-border bg-muted text-muted-foreground',
+  encerrado: 'border-border bg-muted text-muted-foreground',
+  cancelado: 'border-destructive/30 bg-destructive/10 text-destructive',
+};
 
 function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
@@ -181,6 +190,17 @@ export default async function ContratoDetalhePage({
           )}
         </div>
       </div>
+
+      {contract.status === 'encerrado' && (
+        <div
+          className={
+            'rounded-md border px-4 py-3 text-sm font-medium ' +
+            CLOSURE_BANNER_CLASSES[contract.closure_reason ?? 'encerrado']
+          }
+        >
+          Contrato {CLOSURE_REASON_LABELS[contract.closure_reason ?? 'encerrado'].toLowerCase()}.
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
       <Card>
@@ -285,18 +305,17 @@ export default async function ContratoDetalhePage({
             />
           </div>
 
-          <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-4">
-            {(['ativo', 'encerrado'] as const)
-              .filter((status) => status !== contract.status)
-              .map((status) => (
-                <form key={status} action={updateContractStatus}>
-                  <input type="hidden" name="id" value={contract.id} />
-                  <input type="hidden" name="status" value={status} />
-                  <Button type="submit" variant="secondary" size="sm">
-                    Marcar como {status}
-                  </Button>
-                </form>
-              ))}
+          <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-4">
+            {contract.status === 'ativo' && <CloseContractForm contractId={contract.id} />}
+            {contract.status === 'encerrado' && (
+              <form action={updateContractStatus}>
+                <input type="hidden" name="id" value={contract.id} />
+                <input type="hidden" name="status" value="ativo" />
+                <Button type="submit" variant="secondary" size="sm">
+                  Marcar como ativo
+                </Button>
+              </form>
+            )}
           </div>
         </CardContent>
       </Card>

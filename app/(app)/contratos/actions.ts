@@ -340,7 +340,12 @@ export async function updateContractStatus(formData: FormData) {
     fail('Dados inválidos.');
   }
 
-  const { error } = await supabase.from('contracts').update({ status }).eq('id', id);
+  const closureReasonValues = ['inativo', 'encerrado', 'cancelado'] as const;
+  const rawClosureReason = String(formData.get('closureReason') ?? '') as (typeof closureReasonValues)[number];
+  const closureReason =
+    status === 'encerrado' && closureReasonValues.includes(rawClosureReason) ? rawClosureReason : null;
+
+  const { error } = await supabase.from('contracts').update({ status, closure_reason: closureReason }).eq('id', id);
   if (error) fail('Não foi possível atualizar o status do contrato.');
 
   revalidatePath('/contratos');
