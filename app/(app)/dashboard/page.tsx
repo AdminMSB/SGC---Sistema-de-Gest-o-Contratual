@@ -42,12 +42,12 @@ export default async function DashboardPage() {
   const profile = await requireProfile();
   const supabase = await createServerSupabaseClient();
 
-  const [{ data: activeContracts }, { count: distratoCount }] = await Promise.all([
+  const [{ data: activeContracts }, { count: closedCount }] = await Promise.all([
     supabase
       .from('contracts')
       .select('id, title, contract_type, end_date, total_amount_cents, internal_manager_id, alert_emails')
       .eq('status', 'ativo'),
-    supabase.from('contracts').select('*', { count: 'exact', head: true }).eq('has_distrato', true),
+    supabase.from('contracts').select('*', { count: 'exact', head: true }).eq('status', 'encerrado'),
   ]);
 
   const today = startOfDay(new Date());
@@ -89,9 +89,8 @@ export default async function DashboardPage() {
       title="Valor total dos contratos ativos"
       value={formatCurrencyCents(sumAmountCents(contracts))}
     />,
-    <IndicatorCard key="expiring" title="Vencendo em até 90 dias" value={String(expiringSoon.length)} />,
-    <IndicatorCard key="expired" title="Vencidos, ainda ativos" value={String(expiredContracts.length)} />,
-    <IndicatorCard key="distrato" title="Contratos com distrato" value={String(distratoCount ?? 0)} />,
+    <IndicatorCard key="expired" title="Contratos fora da vigência" value={String(expiredContracts.length)} />,
+    <IndicatorCard key="closed" title="Contratos encerrados" value={String(closedCount ?? 0)} />,
   ];
 
   return (
@@ -101,7 +100,7 @@ export default async function DashboardPage() {
         <p className="text-sm text-muted-foreground">Olá, {profile.fullName}.</p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">{cards}</div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">{cards}</div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card>
