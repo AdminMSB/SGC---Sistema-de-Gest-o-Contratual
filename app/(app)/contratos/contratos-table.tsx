@@ -9,9 +9,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ContractStatusBadge } from '@/components/status-badge';
 import { ConfirmSubmitForm } from '@/components/confirm-submit-form';
 import { formatCurrencyCents, formatDate } from '@/lib/format';
+import { computeDisplayStatus } from '@/lib/contract-status';
 import {
-  CONTRACT_STATUS_LABELS,
+  CONTRACT_DISPLAY_STATUS_LABELS,
   CONTRACT_TYPE_LABELS,
+  type ContractDisplayStatus,
   type ContractStatus,
   type ContractType,
 } from '@/types/domain';
@@ -27,18 +29,18 @@ export interface ContractListItem {
   is_variable_value: boolean;
 }
 
-const STATUS_ENTRIES = Object.entries(CONTRACT_STATUS_LABELS) as [ContractStatus, string][];
+const STATUS_ENTRIES = Object.entries(CONTRACT_DISPLAY_STATUS_LABELS) as [ContractDisplayStatus, string][];
 const TYPE_ENTRIES = Object.entries(CONTRACT_TYPE_LABELS) as [ContractType, string][];
 
 export function ContratosTable({ rows, isAdmin }: { rows: ContractListItem[]; isAdmin: boolean }) {
   const [search, setSearch] = useState('');
-  const [status, setStatus] = useState<ContractStatus | ''>('ativo');
+  const [status, setStatus] = useState<ContractDisplayStatus | ''>('ativo');
   const [type, setType] = useState<ContractType | ''>('');
 
   const filteredRows = useMemo(() => {
     const query = search.trim().toLowerCase();
     return rows.filter((row) => {
-      if (status && row.status !== status) return false;
+      if (status && computeDisplayStatus(row.status, row.end_date) !== status) return false;
       if (type && row.contract_type !== type) return false;
       if (!query) return true;
       return row.title.toLowerCase().includes(query);
@@ -63,7 +65,7 @@ export function ContratosTable({ rows, isAdmin }: { rows: ContractListItem[]; is
           <Select
             id="contratos-filtro-status"
             value={status}
-            onChange={(event) => setStatus(event.target.value as ContractStatus | '')}
+            onChange={(event) => setStatus(event.target.value as ContractDisplayStatus | '')}
           >
             <option value="">Todos</option>
             {STATUS_ENTRIES.map(([value, label]) => (
@@ -113,7 +115,7 @@ export function ContratosTable({ rows, isAdmin }: { rows: ContractListItem[]; is
               <TableCell>{row.end_date ? formatDate(row.end_date) : 'Indeterminado'}</TableCell>
               <TableCell>{row.is_variable_value ? 'Variável' : formatCurrencyCents(row.total_amount_cents ?? 0)}</TableCell>
               <TableCell>
-                <ContractStatusBadge status={row.status} />
+                <ContractStatusBadge status={computeDisplayStatus(row.status, row.end_date)} />
               </TableCell>
               {isAdmin && (
                 <TableCell className="text-right">

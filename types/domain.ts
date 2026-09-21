@@ -12,7 +12,9 @@ export type ContractDetailType =
   | 'seguro_predial'
   | 'seguro_auto'
   | 'outro';
-export type ContractStatus = 'ativo' | 'encerrado' | 'cancelado';
+export type ContractStatus = 'ativo' | 'encerrado';
+/** "expirado" não é um valor salvo no banco — é calculado a partir do fim da vigência. */
+export type ContractDisplayStatus = ContractStatus | 'expirado';
 export type Department =
   | 'administrativo'
   | 'manutencao'
@@ -73,7 +75,12 @@ export const READJUSTMENT_INDEX_LABELS: Record<ReadjustmentIndex, string> = {
 export const CONTRACT_STATUS_LABELS: Record<ContractStatus, string> = {
   ativo: 'Ativo',
   encerrado: 'Encerrado',
-  cancelado: 'Cancelado',
+};
+
+export const CONTRACT_DISPLAY_STATUS_LABELS: Record<ContractDisplayStatus, string> = {
+  ativo: 'Ativo',
+  expirado: 'Expirado',
+  encerrado: 'Encerrado',
 };
 
 export const AMENDMENT_STATUS_LABELS: Record<AmendmentStatus, string> = {

@@ -334,7 +334,7 @@ export async function updateContractStatus(formData: FormData) {
   const supabase = await createServerSupabaseClient();
 
   const id = String(formData.get('id') ?? '');
-  const statusValues = ['ativo', 'encerrado', 'cancelado'] as const;
+  const statusValues = ['ativo', 'encerrado'] as const;
   const status = String(formData.get('status') ?? '') as (typeof statusValues)[number];
   if (!id || !statusValues.includes(status)) {
     fail('Dados inválidos.');

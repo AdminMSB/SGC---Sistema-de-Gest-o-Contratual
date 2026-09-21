@@ -134,9 +134,10 @@ contra o documento original, é uma conveniência, não uma leitura jurídica.
 
 ## Histórico de status
 
-Toda mudança de status (`ativo`/`encerrado`/`cancelado`) é registrada automaticamente em
+Toda mudança de status (`ativo`/`encerrado`) é registrada automaticamente em
 `contract_status_history` por um trigger no Postgres (não pela aplicação), com quem mudou e
-quando — visível na tela de detalhe do contrato.
+quando — visível na tela de detalhe do contrato. "Expirado" não é um status salvo: é como um
+contrato `ativo` aparece assim que o fim da vigência passa, até alguém marcar como encerrado.
 
 ## Valor variável
 

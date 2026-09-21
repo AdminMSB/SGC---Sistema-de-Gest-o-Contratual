@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { requireProfile } from '@/lib/auth';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { formatCurrencyCents, formatDate, formatDateTime } from '@/lib/format';
+import { computeDisplayStatus } from '@/lib/contract-status';
 import type { ExtractedHighlights } from '@/lib/pdf-extract';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -51,7 +52,7 @@ function ExtractedHighlightsCard({ highlights }: { highlights: ExtractedHighligh
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="flex flex-col">
+        <div className="flex max-w-2xl flex-col">
           {highlights.objectSummary && <DetailRow label="Objeto (extraído do PDF)" value={highlights.objectSummary} />}
           {highlights.dates.length > 0 && (
             <DetailRow label="Datas encontradas" value={highlights.dates.map(formatDate).join(', ')} />
@@ -88,9 +89,9 @@ function ExtractedHighlightsCard({ highlights }: { highlights: ExtractedHighligh
 
 function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-0.5 border-b border-border py-2 last:border-0 sm:flex-row sm:items-baseline sm:justify-between">
+    <div className="flex flex-col gap-0.5 border-b border-border py-2 last:border-0 sm:grid sm:grid-cols-[220px_1fr] sm:items-baseline sm:gap-4">
       <span className="text-sm text-muted-foreground">{label}</span>
-      <span className="text-sm font-medium sm:text-right">{value}</span>
+      <span className="text-sm font-medium">{value}</span>
     </div>
   );
 }
@@ -142,6 +143,7 @@ export default async function ContratoDetalhePage({
   const managers = (profiles ?? []).filter((profile) => profile.role === 'gestor');
   const profileNameById = new Map((profiles ?? []).map((profile) => [profile.id, profile.full_name]));
   const amendmentCount = (amendments ?? []).length;
+  const displayStatus = computeDisplayStatus(contract.status, contract.end_date);
 
   const amendmentFileUrls = new Map<string, string>();
   for (const amendment of amendments ?? []) {
@@ -185,7 +187,7 @@ export default async function ContratoDetalhePage({
           <CardTitle>Dados do contrato</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col">
+          <div className="flex max-w-2xl flex-col">
             {contract.internal_code && <DetailRow label="Código interno" value={contract.internal_code} />}
             {contract.department && (
               <DetailRow
@@ -223,7 +225,7 @@ export default async function ContratoDetalhePage({
               <DetailRow label="Telefone de contato (2)" value={contract.contact_phone_2} />
             )}
             {contract.alert_emails && <DetailRow label="E-mails para alerta" value={contract.alert_emails} />}
-            <DetailRow label="Status" value={<ContractStatusBadge status={contract.status} />} />
+            <DetailRow label="Status" value={<ContractStatusBadge status={displayStatus} />} />
             <DetailRow label="Início da vigência" value={formatDate(contract.start_date)} />
             <DetailRow
               label="Fim da vigência"
@@ -283,7 +285,7 @@ export default async function ContratoDetalhePage({
           </div>
 
           <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-4">
-            {(['ativo', 'encerrado', 'cancelado'] as const)
+            {(['ativo', 'encerrado'] as const)
               .filter((status) => status !== contract.status)
               .map((status) => (
                 <form key={status} action={updateContractStatus}>
@@ -411,8 +413,8 @@ export default async function ContratoDetalhePage({
               {(statusHistory ?? []).map((entry) => (
                 <TableRow key={entry.id}>
                   <TableCell>{formatDateTime(entry.changed_at)}</TableCell>
-                  <TableCell>{entry.old_status ? CONTRACT_STATUS_LABELS[entry.old_status] : '—'}</TableCell>
-                  <TableCell>{CONTRACT_STATUS_LABELS[entry.new_status]}</TableCell>
+                  <TableCell>{entry.old_status ? (CONTRACT_STATUS_LABELS[entry.old_status] ?? entry.old_status) : '—'}</TableCell>
+                  <TableCell>{CONTRACT_STATUS_LABELS[entry.new_status] ?? entry.new_status}</TableCell>
                   <TableCell>{entry.changed_by ? profileNameById.get(entry.changed_by) ?? '—' : '—'}</TableCell>
                 </TableRow>
               ))}
