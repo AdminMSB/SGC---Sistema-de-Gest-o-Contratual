@@ -32,7 +32,6 @@ export type Department =
   | 'diretoria_executiva'
   | 'juridico';
 export type ReadjustmentIndex = 'igpm' | 'ipca' | 'inpc' | 'outro';
-export type AmendmentStatus = 'em_analise' | 'assinado';
 
 export interface CurrentProfile {
   id: string;
@@ -89,11 +88,6 @@ export const CLOSURE_REASON_LABELS: Record<ClosureReason, string> = {
   inativo: 'Inativo',
   encerrado: 'Encerrado',
   cancelado: 'Cancelado',
-};
-
-export const AMENDMENT_STATUS_LABELS: Record<AmendmentStatus, string> = {
-  em_analise: 'Em análise',
-  assinado: 'Concluído',
 };
 
 export const DEPARTMENT_LABELS: Record<Department, string> = {

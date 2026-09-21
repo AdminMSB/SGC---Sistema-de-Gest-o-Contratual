@@ -381,7 +381,6 @@ export async function deleteContract(formData: FormData) {
 const amendmentSchema = z.object({
   documentName: z.string(),
   description: z.string().trim().min(1, 'Resuma o aditivo.'),
-  status: z.enum(['em_analise', 'assinado']),
   amendmentDate: z.string().min(1, 'Informe a data do aditivo.'),
 });
 
@@ -395,7 +394,6 @@ export async function addAmendment(formData: FormData) {
   const parsed = amendmentSchema.safeParse({
     documentName: String(formData.get('documentName') ?? ''),
     description: String(formData.get('description') ?? ''),
-    status: String(formData.get('status') ?? 'em_analise'),
     amendmentDate: String(formData.get('amendmentDate') ?? ''),
   });
   if (!parsed.success) fail(parsed.error.issues[0]?.message ?? 'Dados inválidos.');
@@ -408,7 +406,6 @@ export async function addAmendment(formData: FormData) {
       contract_id: contractId,
       document_name: parsed.data.documentName.trim() || null,
       description: parsed.data.description,
-      status: parsed.data.status,
       amendment_date: parsed.data.amendmentDate,
     })
     .select('id')
@@ -426,29 +423,6 @@ export async function addAmendment(formData: FormData) {
       await supabase.from('contract_amendments').update({ file_path: path }).eq('id', inserted.id);
     }
   }
-
-  revalidatePath(`/contratos/${contractId}`);
-  redirect(`/contratos/${contractId}`);
-}
-
-export async function updateAmendmentStatus(formData: FormData) {
-  await requireProfile();
-  const supabase = await createServerSupabaseClient();
-
-  const amendmentId = String(formData.get('amendmentId') ?? '');
-  const contractId = String(formData.get('contractId') ?? '');
-  const statusValues = ['em_analise', 'assinado'] as const;
-  const status = String(formData.get('status') ?? '') as (typeof statusValues)[number];
-  if (!amendmentId || !contractId || !statusValues.includes(status)) {
-    fail('Dados inválidos.');
-  }
-
-  const { data, error } = await supabase
-    .from('contract_amendments')
-    .update({ status })
-    .eq('id', amendmentId)
-    .select('id');
-  if (error || !data || data.length === 0) fail('Não foi possível atualizar o status do aditivo.');
 
   revalidatePath(`/contratos/${contractId}`);
   redirect(`/contratos/${contractId}`);

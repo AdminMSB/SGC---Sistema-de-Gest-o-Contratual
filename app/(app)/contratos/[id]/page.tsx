@@ -25,7 +25,6 @@ import {
   type Department,
 } from '@/types/domain';
 import { ContratoForm } from '../contrato-form';
-import { AmendmentStatusForm } from '../amendment-status-form';
 import { CloseContractForm } from '../close-contract-form';
 import { addAmendment, deleteAmendment, deleteContract, updateContractStatus } from '../actions';
 
@@ -331,7 +330,6 @@ export default async function ContratoDetalhePage({
                 <TableHead>Data</TableHead>
                 <TableHead>Nome do documento</TableHead>
                 <TableHead>Resumo</TableHead>
-                <TableHead>Status</TableHead>
                 <TableHead className="w-0" />
               </TableRow>
             </TableHeader>
@@ -341,9 +339,6 @@ export default async function ContratoDetalhePage({
                   <TableCell>{formatDate(amendment.amendment_date)}</TableCell>
                   <TableCell>{amendment.document_name ?? '—'}</TableCell>
                   <TableCell>{amendment.description}</TableCell>
-                  <TableCell>
-                    <AmendmentStatusForm amendmentId={amendment.id} contractId={contract.id} status={amendment.status} />
-                  </TableCell>
                   <TableCell>
                     <ConfirmSubmitForm
                       action={deleteAmendment}
@@ -359,7 +354,7 @@ export default async function ContratoDetalhePage({
               ))}
               {(amendments ?? []).length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground">
+                  <TableCell colSpan={4} className="text-center text-muted-foreground">
                     Nenhum aditivo registrado.
                   </TableCell>
                 </TableRow>
