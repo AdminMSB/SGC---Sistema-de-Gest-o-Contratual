@@ -11,8 +11,10 @@ import { ConfirmSubmitForm } from '@/components/confirm-submit-form';
 import { formatCurrencyCents, formatDate } from '@/lib/format';
 import { computeDisplayStatus } from '@/lib/contract-status';
 import {
+  CONTRACT_DETAIL_TYPE_LABELS,
   CONTRACT_DISPLAY_STATUS_LABELS,
   CONTRACT_TYPE_LABELS,
+  type ContractDetailType,
   type ContractDisplayStatus,
   type ContractStatus,
   type ContractType,
@@ -23,6 +25,7 @@ export interface ContractListItem {
   id: string;
   title: string;
   contract_type: ContractType;
+  contract_detail_type: string | null;
   status: ContractStatus;
   end_date: string | null;
   total_amount_cents: number | null;
@@ -97,6 +100,7 @@ export function ContratosTable({ rows, isAdmin }: { rows: ContractListItem[]; is
           <TableRow>
             <TableHead>Contrato</TableHead>
             <TableHead>Categoria</TableHead>
+            <TableHead>Detalhamento</TableHead>
             <TableHead>Fim da vigência</TableHead>
             <TableHead>Valor</TableHead>
             <TableHead>Status</TableHead>
@@ -112,6 +116,12 @@ export function ContratosTable({ rows, isAdmin }: { rows: ContractListItem[]; is
                 </Link>
               </TableCell>
               <TableCell>{CONTRACT_TYPE_LABELS[row.contract_type]}</TableCell>
+              <TableCell>
+                {row.contract_detail_type
+                  ? CONTRACT_DETAIL_TYPE_LABELS[row.contract_detail_type as ContractDetailType] ??
+                    row.contract_detail_type
+                  : '—'}
+              </TableCell>
               <TableCell>{row.end_date ? formatDate(row.end_date) : 'Indeterminado'}</TableCell>
               <TableCell>{row.is_variable_value ? 'Variável' : formatCurrencyCents(row.total_amount_cents ?? 0)}</TableCell>
               <TableCell>
@@ -133,7 +143,7 @@ export function ContratosTable({ rows, isAdmin }: { rows: ContractListItem[]; is
           ))}
           {filteredRows.length === 0 && (
             <TableRow>
-              <TableCell colSpan={isAdmin ? 6 : 5} className="text-center text-muted-foreground">
+              <TableCell colSpan={isAdmin ? 7 : 6} className="text-center text-muted-foreground">
                 {rows.length === 0 ? 'Nenhum contrato cadastrado ainda.' : 'Nenhum contrato encontrado para esse filtro.'}
               </TableCell>
             </TableRow>
