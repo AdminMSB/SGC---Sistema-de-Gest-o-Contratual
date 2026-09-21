@@ -182,6 +182,7 @@ export default async function ContratoDetalhePage({
         </div>
       </div>
 
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
       <Card>
         <CardHeader>
           <CardTitle>Dados do contrato</CardTitle>
@@ -299,6 +300,22 @@ export default async function ContratoDetalhePage({
           </div>
         </CardContent>
       </Card>
+
+      {fileUrl && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Visualizar contrato</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <iframe
+              src={fileUrl}
+              title="Arquivo do contrato (PDF)"
+              className="h-[800px] w-full rounded-md border border-border"
+            />
+          </CardContent>
+        </Card>
+      )}
+      </div>
 
       <ExtractedHighlightsCard highlights={contract.extracted_highlights} />
 
