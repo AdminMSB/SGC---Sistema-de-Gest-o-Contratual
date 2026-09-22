@@ -3,6 +3,7 @@ import { differenceInCalendarDays, parseISO, startOfDay } from 'date-fns';
 import { requireProfile } from '@/lib/auth';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { formatDate } from '@/lib/format';
+import { cn } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { CONTRACT_TYPE_LABELS, type ContractType } from '@/types/domain';
@@ -16,6 +17,37 @@ function IndicatorCard({ title, value }: { title: string; value: string }) {
       </CardHeader>
       <CardContent />
     </Card>
+  );
+}
+
+/**
+ * Card de destaque, clicável, que leva direto para a lista relevante. Ganha um contorno de
+ * alerta quando `value > 0` — é a parte "precisa de ação agora" do dashboard.
+ */
+function HeroCard({
+  href,
+  title,
+  value,
+  description,
+}: {
+  href: string;
+  title: string;
+  value: number;
+  description: string;
+}) {
+  const urgent = value > 0;
+  return (
+    <Link
+      href={href}
+      className={cn(
+        'flex flex-col justify-between rounded-lg border p-5 transition-colors hover:border-primary',
+        urgent ? 'border-destructive/40 bg-destructive/5' : 'border-border bg-card',
+      )}
+    >
+      <p className="text-sm text-muted-foreground">{title}</p>
+      <p className={cn('mt-2 text-4xl font-semibold', urgent ? 'text-destructive' : 'text-foreground')}>{value}</p>
+      <p className="mt-1 text-xs text-muted-foreground">{description}</p>
+    </Link>
   );
 }
 
@@ -58,6 +90,12 @@ function daysUntilBuckets(items: { daysUntil: number }[]): { label: string; coun
   ];
 }
 
+function daysUntilLabel(daysUntil: number): string {
+  if (daysUntil < 0) return `Vencido há ${Math.abs(daysUntil)} dia(s)`;
+  if (daysUntil === 0) return 'Hoje';
+  return `${daysUntil} dia(s)`;
+}
+
 export default async function DashboardPage() {
   const profile = await requireProfile();
   const supabase = await createServerSupabaseClient();
@@ -65,9 +103,7 @@ export default async function DashboardPage() {
   const [{ data: activeContracts }, { count: closedCount }, { count: totalCount }] = await Promise.all([
     supabase
       .from('contracts')
-      .select(
-        'id, title, contract_type, end_date, internal_manager_id, alert_emails, readjustment_date',
-      )
+      .select('id, title, contract_type, end_date, internal_manager_id, alert_emails, readjustment_date')
       .eq('status', 'ativo'),
     supabase.from('contracts').select('*', { count: 'exact', head: true }).eq('status', 'encerrado'),
     supabase.from('contracts').select('*', { count: 'exact', head: true }),
@@ -96,6 +132,9 @@ export default async function DashboardPage() {
       daysUntil: differenceInCalendarDays(startOfDay(parseISO(c.readjustment_date!)), today),
     }));
   const readjustmentWithin30 = withReadjustmentDays.filter((c) => c.daysUntil >= 0 && c.daysUntil <= 30);
+  const readjustmentSoon = withReadjustmentDays
+    .filter((c) => c.daysUntil <= 90)
+    .sort((a, b) => a.daysUntil - b.daysUntil);
   const readjustmentBuckets = daysUntilBuckets(withReadjustmentDays);
   const readjustmentTotal = Math.max(...readjustmentBuckets.map((b) => b.count), 1);
 
@@ -111,19 +150,6 @@ export default async function DashboardPage() {
   const withoutManager = contracts.filter((c) => !c.internal_manager_id);
   const withoutAlertEmails = contracts.filter((c) => !c.alert_emails);
 
-  const cards = [
-    <IndicatorCard key="total" title="Total de contratos" value={String(totalCount ?? 0)} />,
-    <IndicatorCard key="active" title="Contratos ativos" value={String(contracts.length)} />,
-    <IndicatorCard key="expiring-30" title="A vencer em até 30 dias" value={String(expiringWithin30.length)} />,
-    <IndicatorCard
-      key="readjustment-30"
-      title="Próximo de reajuste (até 30 dias)"
-      value={String(readjustmentWithin30.length)}
-    />,
-    <IndicatorCard key="expired" title="Contratos fora da vigência" value={String(expiredContracts.length)} />,
-    <IndicatorCard key="closed" title="Contratos encerrados" value={String(closedCount ?? 0)} />,
-  ];
-
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -131,9 +157,39 @@ export default async function DashboardPage() {
         <p className="text-sm text-muted-foreground">Olá, {profile.fullName}.</p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">{cards}</div>
+      <div>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          Precisa de ação
+        </h2>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <HeroCard
+            href="#vencendo-em-breve"
+            title="A vencer em até 30 dias"
+            value={expiringWithin30.length}
+            description="Vigência chegando ao fim — avaliar renovação."
+          />
+          <HeroCard
+            href="#reajustes-proximos"
+            title="Próximo de reajuste (até 30 dias)"
+            value={readjustmentWithin30.length}
+            description="Data de reajuste prevista se aproximando."
+          />
+          <HeroCard
+            href="#vencendo-em-breve"
+            title="Contratos fora da vigência"
+            value={expiredContracts.length}
+            description="Ativos no sistema, mas com vigência já encerrada."
+          />
+        </div>
+      </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <IndicatorCard title="Total de contratos" value={String(totalCount ?? 0)} />
+        <IndicatorCard title="Contratos ativos" value={String(contracts.length)} />
+        <IndicatorCard title="Contratos encerrados" value={String(closedCount ?? 0)} />
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <Card>
           <CardHeader>
             <CardTitle>Vencimentos por período</CardTitle>
@@ -191,7 +247,7 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
-      <Card>
+      <Card id="vencendo-em-breve" className="scroll-mt-4">
         <CardHeader>
           <CardTitle>Contratos vencendo em breve</CardTitle>
           <CardDescription>Fim da vigência nos próximos 90 dias, ou já vencidos.</CardDescription>
@@ -211,12 +267,39 @@ export default async function DashboardPage() {
                   </div>
                   <div className="text-right">
                     <p className="text-sm">{formatDate(contract.end_date!)}</p>
-                    <Badge tone={contract.daysUntil < 0 ? 'destructive' : contract.daysUntil <= 7 ? 'destructive' : 'warning'}>
-                      {contract.daysUntil < 0
-                        ? `Vencido há ${Math.abs(contract.daysUntil)} dia(s)`
-                        : contract.daysUntil === 0
-                          ? 'Vence hoje'
-                          : `${contract.daysUntil} dia(s)`}
+                    <Badge tone={contract.daysUntil < 0 || contract.daysUntil <= 7 ? 'destructive' : 'warning'}>
+                      {daysUntilLabel(contract.daysUntil)}
+                    </Badge>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card id="reajustes-proximos" className="scroll-mt-4">
+        <CardHeader>
+          <CardTitle>Reajustes próximos</CardTitle>
+          <CardDescription>Data de reajuste prevista nos próximos 90 dias, ou já vencida.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {readjustmentSoon.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nenhum reajuste previsto nos próximos 90 dias.</p>
+          ) : (
+            <ul className="flex flex-col divide-y divide-border">
+              {readjustmentSoon.map((contract) => (
+                <li key={contract.id} className="flex items-center justify-between gap-4 py-3">
+                  <div>
+                    <Link href={`/contratos/${contract.id}`} className="font-medium hover:underline">
+                      {contract.title}
+                    </Link>
+                    <p className="text-sm text-muted-foreground">{CONTRACT_TYPE_LABELS[contract.contract_type]}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm">{formatDate(contract.readjustment_date!)}</p>
+                    <Badge tone={contract.daysUntil < 0 || contract.daysUntil <= 7 ? 'destructive' : 'warning'}>
+                      {daysUntilLabel(contract.daysUntil)}
                     </Badge>
                   </div>
                 </li>
@@ -232,14 +315,8 @@ export default async function DashboardPage() {
           <CardDescription>Lacunas de cadastro que podem atrapalhar o acompanhamento do contrato.</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          <AttentionGroup
-            title="Sem gestor atribuído"
-            contracts={withoutManager}
-          />
-          <AttentionGroup
-            title="Sem e-mail de alerta de vencimento/reajuste"
-            contracts={withoutAlertEmails}
-          />
+          <AttentionGroup title="Sem gestor atribuído" contracts={withoutManager} />
+          <AttentionGroup title="Sem e-mail de alerta de vencimento/reajuste" contracts={withoutAlertEmails} />
         </CardContent>
       </Card>
     </div>
