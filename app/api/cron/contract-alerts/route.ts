@@ -6,6 +6,10 @@ import { formatDate } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
 
+const PAYMENT_ALERT_NOTICE_DAYS = 10;
+
+type AlertType = 'vencimento' | 'reajuste' | 'nota_fiscal' | 'pagamento_fixo' | 'pagamento_variavel';
+
 /**
  * Roda uma vez por dia (ver vercel.json) e envia e-mail para `alert_emails` quando um contrato
  * entra no prazo de aviso prévio de vencimento, ou se aproxima da data de reajuste. Evita
@@ -21,15 +25,11 @@ export async function GET(request: Request) {
 
   const supabase = createAdminSupabaseClient();
   const today = new Date();
-  const sent: { contractId: string; type: 'vencimento' | 'reajuste' | 'nota_fiscal' }[] = [];
-  const failed: { contractId: string; type: 'vencimento' | 'reajuste' | 'nota_fiscal'; error: string }[] = [];
+  const sent: { contractId: string; type: AlertType }[] = [];
+  const failed: { contractId: string; type: AlertType; error: string }[] = [];
   const queryErrors: string[] = [];
 
-  async function alreadySent(
-    contractId: string,
-    alertType: 'vencimento' | 'reajuste' | 'nota_fiscal',
-    windowDays: number,
-  ) {
+  async function alreadySent(contractId: string, alertType: AlertType, windowDays: number) {
     const since = new Date(today.getTime() - windowDays * 24 * 60 * 60 * 1000).toISOString();
     const { data, error } = await supabase
       .from('contract_alert_log')
@@ -45,13 +45,7 @@ export async function GET(request: Request) {
     return (data?.length ?? 0) > 0;
   }
 
-  async function notify(
-    contractId: string,
-    alertType: 'vencimento' | 'reajuste' | 'nota_fiscal',
-    recipients: string[],
-    subject: string,
-    html: string,
-  ) {
+  async function notify(contractId: string, alertType: AlertType, recipients: string[], subject: string, html: string) {
     try {
       await sendMail({ to: recipients, subject, html });
       const { error: logError } = await supabase
@@ -176,6 +170,42 @@ export async function GET(request: Request) {
     );
   }
 
+  // Financeiro: alerta para o "E-mail financeiro" 10 dias corridos antes de cada data de
+  // pagamento (fixo e variável são independentes, já que costumam cair em dias diferentes).
+  const { data: financialContracts, error: financialError } = await supabase
+    .from('contracts')
+    .select('id, title, financial_email, fixed_payment_date, variable_payment_date')
+    .eq('status', 'ativo')
+    .not('financial_email', 'is', null);
+  if (financialError) {
+    queryErrors.push(`contracts (financeiro): ${financialError.message}`);
+    console.error('[contract-alerts] erro ao consultar contracts para financeiro:', financialError);
+  }
+
+  const paymentDateFields = [
+    { type: 'pagamento_fixo' as const, field: 'fixed_payment_date' as const, label: 'pagamento fixo' },
+    { type: 'pagamento_variavel' as const, field: 'variable_payment_date' as const, label: 'pagamento variável' },
+  ];
+
+  for (const contract of financialContracts ?? []) {
+    if (!contract.financial_email) continue;
+
+    for (const { type, field, label } of paymentDateFields) {
+      const paymentDate = contract[field];
+      if (!paymentDate) continue;
+      if (!isWithinNoticeWindow(paymentDate, PAYMENT_ALERT_NOTICE_DAYS, today)) continue;
+      if (await alreadySent(contract.id, type, PAYMENT_ALERT_NOTICE_DAYS)) continue;
+
+      await notify(
+        contract.id,
+        type,
+        [contract.financial_email],
+        `Contrato "${contract.title}" se aproxima da data de ${label}`,
+        `<p>O contrato <strong>${contract.title}</strong> tem ${label} previsto para <strong>${formatDate(paymentDate)}</strong>.</p>`,
+      );
+    }
+  }
+
   console.log(`[contract-alerts] execução concluída: ${sent.length} enviado(s), ${failed.length} falha(s)`);
   return NextResponse.json({
     sent,
@@ -187,6 +217,7 @@ export async function GET(request: Request) {
       expiring,
       readjustableCount: readjustable?.length ?? 0,
       invoiceReminderCount: invoiceReminders?.length ?? 0,
+      financialCount: financialContracts?.length ?? 0,
     },
   });
 }

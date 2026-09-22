@@ -52,6 +52,9 @@ const contractSchema = z.object({
   ]),
   internalManagerId: z.string(),
   alertEmails: z.string(),
+  financialEmail: z.string(),
+  fixedPaymentDate: z.string(),
+  variablePaymentDate: z.string(),
   notes: z.string(),
 });
 
@@ -87,6 +90,9 @@ function parseContractFields(formData: FormData) {
     department: String(formData.get('department') ?? ''),
     internalManagerId: String(formData.get('internalManagerId') ?? ''),
     alertEmails: String(formData.get('alertEmails') ?? ''),
+    financialEmail: String(formData.get('financialEmail') ?? ''),
+    fixedPaymentDate: String(formData.get('fixedPaymentDate') ?? ''),
+    variablePaymentDate: String(formData.get('variablePaymentDate') ?? ''),
     notes: String(formData.get('notes') ?? ''),
   });
 
@@ -141,6 +147,16 @@ function parseContractFields(formData: FormData) {
     fail(`E-mail de alerta inválido: ${invalidAlertEmail}`);
   }
 
+  const financialEmail = parsed.data.financialEmail.trim();
+  if (financialEmail && !EMAIL_PATTERN.test(financialEmail)) {
+    fail('Informe um e-mail financeiro válido.');
+  }
+  const fixedPaymentDate = parsed.data.fixedPaymentDate.trim() || null;
+  const variablePaymentDate = parsed.data.variablePaymentDate.trim() || null;
+  if ((fixedPaymentDate || variablePaymentDate) && !financialEmail) {
+    fail('Informe o e-mail financeiro para poder enviar o alerta de pagamento.');
+  }
+
   return {
     ...parsed.data,
     endDate,
@@ -164,6 +180,9 @@ function parseContractFields(formData: FormData) {
     department: parsed.data.department.trim() || null,
     internalManagerId: parsed.data.internalManagerId.trim() || null,
     alertEmails: alertEmails.length > 0 ? alertEmails.join(', ') : null,
+    financialEmail: financialEmail || null,
+    fixedPaymentDate,
+    variablePaymentDate,
   };
 }
 
@@ -223,6 +242,9 @@ export async function createContract(formData: FormData) {
       department: fields.department,
       internal_manager_id: fields.internalManagerId,
       alert_emails: fields.alertEmails,
+      financial_email: fields.financialEmail,
+      fixed_payment_date: fields.fixedPaymentDate,
+      variable_payment_date: fields.variablePaymentDate,
       notes: fields.notes || null,
       created_by: profile.id,
     })
@@ -342,6 +364,9 @@ export async function updateContract(formData: FormData) {
       department: fields.department,
       internal_manager_id: fields.internalManagerId,
       alert_emails: fields.alertEmails,
+      financial_email: fields.financialEmail,
+      fixed_payment_date: fields.fixedPaymentDate,
+      variable_payment_date: fields.variablePaymentDate,
       ...(file ? { extracted_highlights: extractedHighlights } : {}),
       notes: fields.notes || null,
       file_path: filePath,

@@ -309,6 +309,29 @@ export default async function ContratoDetalhePage({
           </div>
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Financeiro</CardTitle>
+          <CardDescription>Alerta enviado 10 dias corridos antes de cada data de pagamento.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex max-w-2xl flex-col">
+            {contract.financial_email && (
+              <DetailRow label="E-mail financeiro" value={contract.financial_email} />
+            )}
+            {contract.fixed_payment_date && (
+              <DetailRow label="Data do pagamento fixo" value={formatDate(contract.fixed_payment_date)} />
+            )}
+            {contract.variable_payment_date && (
+              <DetailRow label="Data do pagamento variável" value={formatDate(contract.variable_payment_date)} />
+            )}
+            {!contract.financial_email && !contract.fixed_payment_date && !contract.variable_payment_date && (
+              <p className="text-sm text-muted-foreground">Nenhum dado financeiro cadastrado.</p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
       </div>
 
       {fileUrl && (

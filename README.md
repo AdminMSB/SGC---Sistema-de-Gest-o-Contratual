@@ -146,7 +146,7 @@ variável" em vez de preencher "Valor total do contrato" — o campo fica desabi
 `total_amount_cents` é gravado como `null`. O dashboard e a listagem tratam esse caso mostrando
 "Variável" em vez de um valor em R$.
 
-## Alerta automático por e-mail (vencimento, reajuste e nota fiscal)
+## Alerta automático por e-mail (vencimento, reajuste, nota fiscal e financeiro)
 
 Um cron job diário (`vercel.json` → `/api/cron/contract-alerts`, executado pela própria Vercel)
 verifica todos os contratos ativos e envia e-mail para a lista em "E-mails para alerta de
@@ -161,6 +161,10 @@ Também envia, direto para o **e-mail do fornecedor** ("Email" em Dados do forne
 lembrete automático de **emissão/envio de nota fiscal** no(s) dia(s) do mês configurados em
 "Lembrete de nota fiscal" (ex.: `5` para pagamento único, `5, 20` para mais de um pagamento no
 mês) — útil para contratos com parcelas mensais.
+
+E envia, para o **"E-mail financeiro"** (card "Financeiro"), um alerta com **10 dias corridos**
+de antecedência de cada data de pagamento cadastrada — "Data do pagamento fixo" e "Data do
+pagamento variável" são independentes, já que costumam cair em dias diferentes do mês.
 
 Cada alerta só é enviado uma vez por ciclo (ou, no caso da nota fiscal, uma vez por dia
 configurado) — `contract_alert_log` registra o que já foi notificado e evita reenvio.

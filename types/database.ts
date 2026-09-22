@@ -60,6 +60,9 @@ export interface Database {
           department: string | null;
           internal_manager_id: string | null;
           alert_emails: string | null;
+          financial_email: string | null;
+          fixed_payment_date: string | null;
+          variable_payment_date: string | null;
           file_path: string | null;
           notes: string | null;
           extracted_highlights: ExtractedHighlights | null;
@@ -97,6 +100,9 @@ export interface Database {
           department?: string | null;
           internal_manager_id?: string | null;
           alert_emails?: string | null;
+          financial_email?: string | null;
+          fixed_payment_date?: string | null;
+          variable_payment_date?: string | null;
           file_path?: string | null;
           notes?: string | null;
           extracted_highlights?: ExtractedHighlights | null;
@@ -155,13 +161,13 @@ export interface Database {
         Row: {
           id: string;
           contract_id: string;
-          alert_type: 'vencimento' | 'reajuste' | 'nota_fiscal';
+          alert_type: 'vencimento' | 'reajuste' | 'nota_fiscal' | 'pagamento_fixo' | 'pagamento_variavel';
           sent_at: string;
         };
         Insert: {
           id?: string;
           contract_id: string;
-          alert_type: 'vencimento' | 'reajuste' | 'nota_fiscal';
+          alert_type: 'vencimento' | 'reajuste' | 'nota_fiscal' | 'pagamento_fixo' | 'pagamento_variavel';
           sent_at?: string;
         };
         Update: Partial<Database['public']['Tables']['contract_alert_log']['Insert']>;
