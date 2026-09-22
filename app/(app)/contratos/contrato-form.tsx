@@ -514,6 +514,46 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
           </div>
 
           <h2 className="border-t border-border pt-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Alerta de faturamento
+          </h2>
+
+          <div>
+            <Label htmlFor={`financialEmail-${mode}`}>E-mail financeiro</Label>
+            <Input
+              id={`financialEmail-${mode}`}
+              name="financialEmail"
+              type="email"
+              placeholder="financeiro@msbbrasil.com"
+              defaultValue={contract?.financial_email ?? ''}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor={`fixedPaymentDate-${mode}`}>Data do pagamento fixo</Label>
+              <Input
+                id={`fixedPaymentDate-${mode}`}
+                name="fixedPaymentDate"
+                type="date"
+                defaultValue={contract?.fixed_payment_date?.slice(0, 10) ?? ''}
+              />
+            </div>
+            <div>
+              <Label htmlFor={`variablePaymentDate-${mode}`}>Data do pagamento variável</Label>
+              <Input
+                id={`variablePaymentDate-${mode}`}
+                name="variablePaymentDate"
+                type="date"
+                defaultValue={contract?.variable_payment_date?.slice(0, 10) ?? ''}
+              />
+            </div>
+          </div>
+          <p className="-mt-2 text-xs text-muted-foreground">
+            O alerta para o e-mail financeiro é enviado automaticamente 10 dias corridos antes de
+            cada data de pagamento preenchida.
+          </p>
+
+          <h2 className="border-t border-border pt-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Informações gerenciais internas
           </h2>
 
@@ -574,46 +614,6 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
           <p className="-mt-2 text-xs text-muted-foreground">
             O envio automático por e-mail acontece uma vez por dia, quando o contrato entra no
             prazo de aviso prévio (vencimento) ou se aproxima da data de reajuste.
-          </p>
-
-          <h2 className="border-t border-border pt-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Financeiro
-          </h2>
-
-          <div>
-            <Label htmlFor={`financialEmail-${mode}`}>E-mail financeiro</Label>
-            <Input
-              id={`financialEmail-${mode}`}
-              name="financialEmail"
-              type="email"
-              placeholder="financeiro@msbbrasil.com"
-              defaultValue={contract?.financial_email ?? ''}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor={`fixedPaymentDate-${mode}`}>Data do pagamento fixo</Label>
-              <Input
-                id={`fixedPaymentDate-${mode}`}
-                name="fixedPaymentDate"
-                type="date"
-                defaultValue={contract?.fixed_payment_date?.slice(0, 10) ?? ''}
-              />
-            </div>
-            <div>
-              <Label htmlFor={`variablePaymentDate-${mode}`}>Data do pagamento variável</Label>
-              <Input
-                id={`variablePaymentDate-${mode}`}
-                name="variablePaymentDate"
-                type="date"
-                defaultValue={contract?.variable_payment_date?.slice(0, 10) ?? ''}
-              />
-            </div>
-          </div>
-          <p className="-mt-2 text-xs text-muted-foreground">
-            O alerta para o e-mail financeiro é enviado automaticamente 10 dias corridos antes de
-            cada data de pagamento preenchida.
           </p>
 
           <div className="flex justify-end gap-2">

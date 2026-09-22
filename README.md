@@ -162,7 +162,7 @@ lembrete automático de **emissão/envio de nota fiscal** no(s) dia(s) do mês c
 "Lembrete de nota fiscal" (ex.: `5` para pagamento único, `5, 20` para mais de um pagamento no
 mês) — útil para contratos com parcelas mensais.
 
-E envia, para o **"E-mail financeiro"** (card "Financeiro"), um alerta com **10 dias corridos**
+E envia, para o **"E-mail financeiro"** (card "Alerta de faturamento"), um alerta com **10 dias corridos**
 de antecedência de cada data de pagamento cadastrada — "Data do pagamento fixo" e "Data do
 pagamento variável" são independentes, já que costumam cair em dias diferentes do mês.
 

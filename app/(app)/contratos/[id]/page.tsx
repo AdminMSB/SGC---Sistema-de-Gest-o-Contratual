@@ -291,28 +291,7 @@ export default async function ContratoDetalhePage({
 
       <Card>
         <CardHeader>
-          <CardTitle>Dados gerenciais</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex max-w-2xl flex-col">
-            {contract.internal_manager_id && profileNameById.get(contract.internal_manager_id) && (
-              <DetailRow label="Gestor do contrato" value={profileNameById.get(contract.internal_manager_id)!} />
-            )}
-            {contract.internal_code && <DetailRow label="Código D365" value={contract.internal_code} />}
-            {contract.department && (
-              <DetailRow
-                label="Centro de custo"
-                value={DEPARTMENT_LABELS[contract.department as Department] ?? contract.department}
-              />
-            )}
-            {contract.alert_emails && <DetailRow label="E-mails para alerta" value={contract.alert_emails} />}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Financeiro</CardTitle>
+          <CardTitle>Alerta de faturamento</CardTitle>
           <CardDescription>Alerta enviado 10 dias corridos antes de cada data de pagamento.</CardDescription>
         </CardHeader>
         <CardContent>
@@ -329,6 +308,27 @@ export default async function ContratoDetalhePage({
             {!contract.financial_email && !contract.fixed_payment_date && !contract.variable_payment_date && (
               <p className="text-sm text-muted-foreground">Nenhum dado financeiro cadastrado.</p>
             )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Dados gerenciais</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex max-w-2xl flex-col">
+            {contract.internal_manager_id && profileNameById.get(contract.internal_manager_id) && (
+              <DetailRow label="Gestor do contrato" value={profileNameById.get(contract.internal_manager_id)!} />
+            )}
+            {contract.internal_code && <DetailRow label="Código D365" value={contract.internal_code} />}
+            {contract.department && (
+              <DetailRow
+                label="Centro de custo"
+                value={DEPARTMENT_LABELS[contract.department as Department] ?? contract.department}
+              />
+            )}
+            {contract.alert_emails && <DetailRow label="E-mails para alerta" value={contract.alert_emails} />}
           </div>
         </CardContent>
       </Card>
