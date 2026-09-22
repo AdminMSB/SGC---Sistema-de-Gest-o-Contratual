@@ -29,6 +29,7 @@ const contractSchema = z.object({
   distratoDate: z.string(),
   representativeName: z.string(),
   contactEmail: z.string(),
+  invoiceReminderDays: z.string(),
   contactPhone: z.string(),
   contactPhone2: z.string(),
   isWhatsapp: z.string(),
@@ -78,6 +79,7 @@ function parseContractFields(formData: FormData) {
     distratoDate: String(formData.get('distratoDate') ?? ''),
     representativeName: String(formData.get('representativeName') ?? ''),
     contactEmail: String(formData.get('contactEmail') ?? ''),
+    invoiceReminderDays: String(formData.get('invoiceReminderDays') ?? ''),
     contactPhone: String(formData.get('contactPhone') ?? ''),
     contactPhone2: String(formData.get('contactPhone2') ?? ''),
     isWhatsapp: String(formData.get('isWhatsapp') ?? ''),
@@ -113,6 +115,23 @@ function parseContractFields(formData: FormData) {
     fail('Informe um e-mail de contato válido.');
   }
 
+  const invoiceReminderDays = Array.from(
+    new Set(
+      parsed.data.invoiceReminderDays
+        .split(/[,;\s]+/)
+        .map((value) => value.trim())
+        .filter(Boolean)
+        .map((value) => Number.parseInt(value, 10)),
+    ),
+  ).sort((a, b) => a - b);
+  const invalidReminderDay = invoiceReminderDays.find((day) => !Number.isInteger(day) || day < 1 || day > 31);
+  if (invalidReminderDay !== undefined) {
+    fail(`Dia inválido para lembrete de nota fiscal: ${invalidReminderDay}. Use números de 1 a 31.`);
+  }
+  if (invoiceReminderDays.length > 0 && !contactEmail) {
+    fail('Informe o e-mail do fornecedor para poder enviar o lembrete de nota fiscal.');
+  }
+
   const alertEmails = parsed.data.alertEmails
     .split(/[,;\s]+/)
     .map((email) => email.trim())
@@ -137,6 +156,7 @@ function parseContractFields(formData: FormData) {
     distratoDate: parsed.data.distratoDate.trim() || null,
     representativeName: parsed.data.representativeName.trim() || null,
     contactEmail: contactEmail || null,
+    invoiceReminderDays: invoiceReminderDays.length > 0 ? invoiceReminderDays.join(', ') : null,
     contactPhone: parsed.data.contactPhone.trim() || null,
     contactPhone2: parsed.data.contactPhone2.trim() || null,
     isWhatsapp: parsed.data.isWhatsapp === 'on',
@@ -195,6 +215,7 @@ export async function createContract(formData: FormData) {
       distrato_date: fields.distratoDate,
       representative_name: fields.representativeName,
       contact_email: fields.contactEmail,
+      invoice_reminder_days: fields.invoiceReminderDays,
       contact_phone: fields.contactPhone,
       contact_phone_2: fields.contactPhone2,
       is_whatsapp: fields.isWhatsapp,
@@ -313,6 +334,7 @@ export async function updateContract(formData: FormData) {
       distrato_date: fields.distratoDate,
       representative_name: fields.representativeName,
       contact_email: fields.contactEmail,
+      invoice_reminder_days: fields.invoiceReminderDays,
       contact_phone: fields.contactPhone,
       contact_phone_2: fields.contactPhone2,
       is_whatsapp: fields.isWhatsapp,

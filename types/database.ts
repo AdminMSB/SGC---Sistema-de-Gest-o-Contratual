@@ -52,6 +52,7 @@ export interface Database {
           distrato_date: string | null;
           representative_name: string | null;
           contact_email: string | null;
+          invoice_reminder_days: string | null;
           contact_phone: string | null;
           contact_phone_2: string | null;
           is_whatsapp: boolean;
@@ -88,6 +89,7 @@ export interface Database {
           distrato_date?: string | null;
           representative_name?: string | null;
           contact_email?: string | null;
+          invoice_reminder_days?: string | null;
           contact_phone?: string | null;
           contact_phone_2?: string | null;
           is_whatsapp?: boolean;
@@ -153,13 +155,13 @@ export interface Database {
         Row: {
           id: string;
           contract_id: string;
-          alert_type: 'vencimento' | 'reajuste';
+          alert_type: 'vencimento' | 'reajuste' | 'nota_fiscal';
           sent_at: string;
         };
         Insert: {
           id?: string;
           contract_id: string;
-          alert_type: 'vencimento' | 'reajuste';
+          alert_type: 'vencimento' | 'reajuste' | 'nota_fiscal';
           sent_at?: string;
         };
         Update: Partial<Database['public']['Tables']['contract_alert_log']['Insert']>;

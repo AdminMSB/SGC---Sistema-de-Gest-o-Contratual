@@ -21,11 +21,15 @@ export async function GET(request: Request) {
 
   const supabase = createAdminSupabaseClient();
   const today = new Date();
-  const sent: { contractId: string; type: 'vencimento' | 'reajuste' }[] = [];
-  const failed: { contractId: string; type: 'vencimento' | 'reajuste'; error: string }[] = [];
+  const sent: { contractId: string; type: 'vencimento' | 'reajuste' | 'nota_fiscal' }[] = [];
+  const failed: { contractId: string; type: 'vencimento' | 'reajuste' | 'nota_fiscal'; error: string }[] = [];
   const queryErrors: string[] = [];
 
-  async function alreadySent(contractId: string, alertType: 'vencimento' | 'reajuste', windowDays: number) {
+  async function alreadySent(
+    contractId: string,
+    alertType: 'vencimento' | 'reajuste' | 'nota_fiscal',
+    windowDays: number,
+  ) {
     const since = new Date(today.getTime() - windowDays * 24 * 60 * 60 * 1000).toISOString();
     const { data, error } = await supabase
       .from('contract_alert_log')
@@ -43,7 +47,7 @@ export async function GET(request: Request) {
 
   async function notify(
     contractId: string,
-    alertType: 'vencimento' | 'reajuste',
+    alertType: 'vencimento' | 'reajuste' | 'nota_fiscal',
     recipients: string[],
     subject: string,
     html: string,
@@ -121,6 +125,57 @@ export async function GET(request: Request) {
     );
   }
 
+  // Nota fiscal: lembrete ao FORNECEDOR (contact_email) para emitir/enviar a NF em dia(s)
+  // fixos do mês. Dedup por "hoje" (não por janela de dias) — o próprio dia-do-mês já é o
+  // gatilho, então cada dia configurado dispara seu próprio alerta no mês.
+  const { data: invoiceReminders, error: invoiceReminderError } = await supabase
+    .from('contracts')
+    .select('id, title, contact_email, invoice_reminder_days')
+    .eq('status', 'ativo')
+    .not('invoice_reminder_days', 'is', null)
+    .not('contact_email', 'is', null);
+  if (invoiceReminderError) {
+    queryErrors.push(`contracts (nota fiscal): ${invoiceReminderError.message}`);
+    console.error('[contract-alerts] erro ao consultar contracts para nota fiscal:', invoiceReminderError);
+  }
+
+  const todayDayOfMonth = today.getDate();
+  const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
+
+  async function alreadySentToday(contractId: string) {
+    const { data, error } = await supabase
+      .from('contract_alert_log')
+      .select('id')
+      .eq('contract_id', contractId)
+      .eq('alert_type', 'nota_fiscal')
+      .gte('sent_at', startOfToday)
+      .limit(1);
+    if (error) {
+      queryErrors.push(`contract_alert_log (consulta nota fiscal): ${error.message}`);
+      console.error('[contract-alerts] erro ao consultar contract_alert_log (nota fiscal):', error);
+    }
+    return (data?.length ?? 0) > 0;
+  }
+
+  for (const contract of invoiceReminders ?? []) {
+    if (!contract.contact_email || !contract.invoice_reminder_days) continue;
+
+    const reminderDays = contract.invoice_reminder_days
+      .split(',')
+      .map((value) => Number.parseInt(value.trim(), 10))
+      .filter((value) => Number.isInteger(value));
+    if (!reminderDays.includes(todayDayOfMonth)) continue;
+    if (await alreadySentToday(contract.id)) continue;
+
+    await notify(
+      contract.id,
+      'nota_fiscal',
+      [contract.contact_email],
+      `Lembrete de nota fiscal — Contrato "${contract.title}"`,
+      `<p>Este é um lembrete automático para emissão/envio da nota fiscal referente ao contrato <strong>${contract.title}</strong>.</p>`,
+    );
+  }
+
   console.log(`[contract-alerts] execução concluída: ${sent.length} enviado(s), ${failed.length} falha(s)`);
   return NextResponse.json({
     sent,
@@ -131,6 +186,7 @@ export async function GET(request: Request) {
       expiringCount: expiring?.length ?? 0,
       expiring,
       readjustableCount: readjustable?.length ?? 0,
+      invoiceReminderCount: invoiceReminders?.length ?? 0,
     },
   });
 }

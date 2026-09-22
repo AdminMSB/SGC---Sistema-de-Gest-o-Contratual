@@ -45,6 +45,7 @@ export interface ContractDefaults {
   has_distrato: boolean;
   representative_name: string | null;
   contact_email: string | null;
+  invoice_reminder_days: string | null;
   contact_phone: string | null;
   contact_phone_2: string | null;
   is_whatsapp: boolean;
@@ -493,6 +494,21 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
             checked={isWhatsapp}
             onChange={setIsWhatsapp}
           />
+
+          <div>
+            <Label htmlFor={`invoiceReminderDays-${mode}`}>Lembrete de nota fiscal (dia do mês)</Label>
+            <Input
+              id={`invoiceReminderDays-${mode}`}
+              name="invoiceReminderDays"
+              type="text"
+              placeholder="Ex.: 5 (pagamento único) ou 5, 20 (mais de um por mês)"
+              defaultValue={contract?.invoice_reminder_days ?? ''}
+            />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Envia um e-mail automático para o &quot;Email&quot; do fornecedor acima, todo mês, no(s)
+              dia(s) informado(s), lembrando de emitir/enviar a nota fiscal.
+            </p>
+          </div>
 
           <h2 className="border-t border-border pt-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Informações gerenciais internas

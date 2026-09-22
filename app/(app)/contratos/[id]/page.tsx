@@ -260,6 +260,12 @@ export default async function ContratoDetalhePage({
             {contract.contact_phone_2 && (
               <DetailRow label="Telefone de contato (2)" value={contract.contact_phone_2} />
             )}
+            {contract.invoice_reminder_days && (
+              <DetailRow
+                label="Lembrete de nota fiscal"
+                value={`Todo dia ${contract.invoice_reminder_days} do mês`}
+              />
+            )}
             <DetailRow label="Arquivo do contrato" value={fileUrl ? 'Sim' : 'Não'} />
             <DetailRow label="Distrato" value={contract.has_distrato ? 'Sim' : 'Não'} />
             <DetailRow
