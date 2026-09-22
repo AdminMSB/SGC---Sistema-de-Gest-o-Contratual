@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireProfile } from '@/lib/auth';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-import { formatCurrencyCents, formatDate, formatDateTime } from '@/lib/format';
+import { formatCurrencyCents, formatDate } from '@/lib/format';
 import { computeDisplayStatus, computeVigenciaCountdown } from '@/lib/contract-status';
 import { Badge, type BadgeTone } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -16,7 +16,6 @@ import { ConfirmSubmitForm } from '@/components/confirm-submit-form';
 import {
   CLOSURE_REASON_LABELS,
   CONTRACT_DETAIL_TYPE_LABELS,
-  CONTRACT_STATUS_LABELS,
   CONTRACT_TYPE_LABELS,
   DEPARTMENT_LABELS,
   READJUSTMENT_INDEX_LABELS,
@@ -66,20 +65,14 @@ export default async function ContratoDetalhePage({
   const { data: contract } = await supabase.from('contracts').select('*').eq('id', params.id).single();
   if (!contract) notFound();
 
-  const [{ data: profiles }, { data: amendments }, { data: statusHistory }] =
-    await Promise.all([
-      supabase.from('profiles').select('id, full_name, role').order('full_name'),
-      supabase
-        .from('contract_amendments')
-        .select('*')
-        .eq('contract_id', contract.id)
-        .order('amendment_date', { ascending: false }),
-      supabase
-        .from('contract_status_history')
-        .select('*')
-        .eq('contract_id', contract.id)
-        .order('changed_at', { ascending: false }),
-    ]);
+  const [{ data: profiles }, { data: amendments }] = await Promise.all([
+    supabase.from('profiles').select('id, full_name, role').order('full_name'),
+    supabase
+      .from('contract_amendments')
+      .select('*')
+      .eq('contract_id', contract.id)
+      .order('amendment_date', { ascending: false }),
+  ]);
 
   let fileUrl: string | null = null;
   if (contract.file_path) {
@@ -463,41 +456,6 @@ export default async function ContratoDetalhePage({
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Histórico de status</CardTitle>
-          <CardDescription>Registrado automaticamente a cada mudança de status.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Data</TableHead>
-                <TableHead>De</TableHead>
-                <TableHead>Para</TableHead>
-                <TableHead>Por</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(statusHistory ?? []).map((entry) => (
-                <TableRow key={entry.id}>
-                  <TableCell>{formatDateTime(entry.changed_at)}</TableCell>
-                  <TableCell>{entry.old_status ? (CONTRACT_STATUS_LABELS[entry.old_status] ?? entry.old_status) : '—'}</TableCell>
-                  <TableCell>{CONTRACT_STATUS_LABELS[entry.new_status] ?? entry.new_status}</TableCell>
-                  <TableCell>{entry.changed_by ? profileNameById.get(entry.changed_by) ?? '—' : '—'}</TableCell>
-                </TableRow>
-              ))}
-              {(statusHistory ?? []).length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground">
-                    Nenhuma mudança de status registrada ainda.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
     </div>
   );
 }
