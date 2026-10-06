@@ -1,6 +1,12 @@
 import { NextResponse } from 'next/server';
 import { createAdminSupabaseClient } from '@/lib/supabase/admin';
 import { isWithinNoticeWindow } from '@/lib/contract-alerts';
+import {
+  CONTRACT_DOCUMENT_STATUS_LABELS,
+  CONTRACT_DOCUMENT_TYPE_LABELS,
+  computeDocumentStatus,
+  type FixedContractDocumentType,
+} from '@/lib/contract-documents';
 import { sendMail } from '@/lib/mailer';
 import { formatDate } from '@/lib/format';
 
@@ -8,7 +14,15 @@ export const dynamic = 'force-dynamic';
 
 const PAYMENT_ALERT_NOTICE_DAYS = 10;
 
-type AlertType = 'vencimento' | 'reajuste' | 'nota_fiscal' | 'pagamento_fixo' | 'pagamento_variavel';
+const DOCUMENT_ALERT_REPEAT_DAYS = 7;
+
+type AlertType =
+  | 'vencimento'
+  | 'reajuste'
+  | 'nota_fiscal'
+  | 'pagamento_fixo'
+  | 'pagamento_variavel'
+  | 'documento_vencendo';
 
 /**
  * Roda uma vez por dia (ver vercel.json) e envia e-mail para `alert_emails` quando um contrato
@@ -204,6 +218,67 @@ export async function GET(request: Request) {
         `<p>O contrato <strong>${contract.title}</strong> tem ${label} previsto para <strong>${formatDate(paymentDate)}</strong>.</p>`,
       );
     }
+  }
+
+  // Documentação de habilitação: um e-mail por contrato (para os e-mails de alerta internos)
+  // listando todas as certidões/documentos vencendo ou vencidos. Repete a cada 7 dias até
+  // alguém atualizar o documento.
+  const { data: validityDocuments, error: documentsError } = await supabase
+    .from('contract_documents')
+    .select('contract_id, document_type, label, validity_date, file_path')
+    .not('validity_date', 'is', null)
+    .not('file_path', 'is', null);
+  if (documentsError) {
+    queryErrors.push(`contract_documents: ${documentsError.message}`);
+    console.error('[contract-alerts] erro ao consultar contract_documents:', documentsError);
+  }
+
+  const dueDocumentsByContract = new Map<string, string[]>();
+  for (const document of validityDocuments ?? []) {
+    const status = computeDocumentStatus(document.file_path, document.validity_date, today);
+    if (status !== 'vencendo' && status !== 'vencido') continue;
+
+    const name =
+      document.document_type === 'outro'
+        ? (document.label ?? 'Outro documento')
+        : CONTRACT_DOCUMENT_TYPE_LABELS[document.document_type as FixedContractDocumentType];
+    const line = `${name} — ${CONTRACT_DOCUMENT_STATUS_LABELS[status].toLowerCase()} (validade ${formatDate(document.validity_date!)})`;
+    dueDocumentsByContract.set(document.contract_id, [
+      ...(dueDocumentsByContract.get(document.contract_id) ?? []),
+      line,
+    ]);
+  }
+
+  let documentContracts: { id: string; title: string; alert_emails: string | null }[] = [];
+  if (dueDocumentsByContract.size > 0) {
+    const { data, error } = await supabase
+      .from('contracts')
+      .select('id, title, alert_emails')
+      .eq('status', 'ativo')
+      .in('id', Array.from(dueDocumentsByContract.keys()))
+      .not('alert_emails', 'is', null);
+    if (error) {
+      queryErrors.push(`contracts (documentos): ${error.message}`);
+      console.error('[contract-alerts] erro ao consultar contracts para documentos:', error);
+    }
+    documentContracts = data ?? [];
+  }
+
+  for (const contract of documentContracts) {
+    if (!contract.alert_emails) continue;
+    if (await alreadySent(contract.id, 'documento_vencendo', DOCUMENT_ALERT_REPEAT_DAYS)) continue;
+
+    const recipients = contract.alert_emails.split(',').map((email) => email.trim()).filter(Boolean);
+    if (recipients.length === 0) continue;
+
+    const items = (dueDocumentsByContract.get(contract.id) ?? []).map((line) => `<li>${line}</li>`).join('');
+    await notify(
+      contract.id,
+      'documento_vencendo',
+      recipients,
+      `Contrato "${contract.title}" tem documentos de habilitação vencendo ou vencidos`,
+      `<p>No contrato <strong>${contract.title}</strong>, os documentos abaixo precisam de atenção:</p><ul>${items}</ul>`,
+    );
   }
 
   console.log(`[contract-alerts] execução concluída: ${sent.length} enviado(s), ${failed.length} falha(s)`);

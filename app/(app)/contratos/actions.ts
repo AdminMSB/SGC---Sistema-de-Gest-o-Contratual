@@ -8,6 +8,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { parseCurrencyToCents } from '@/lib/format';
 import { extractTextFromPdf } from '@/lib/pdf-text';
 import { extractHighlightsFromText, type ExtractedHighlights } from '@/lib/pdf-extract';
+import { CONTRACT_DOCUMENT_TYPES, type ContractDocumentType } from '@/lib/contract-documents';
 
 const ACCEPTED_FILE_TYPES = ['application/pdf'];
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
@@ -491,6 +492,108 @@ export async function deleteAmendment(formData: FormData) {
 
   const { error } = await supabase.from('contract_amendments').delete().eq('id', amendmentId);
   if (error) fail('Não foi possível excluir o aditivo.');
+
+  if (existing?.file_path) {
+    await supabase.storage.from('contracts').remove([existing.file_path]);
+  }
+
+  revalidatePath(`/contratos/${contractId}`);
+  redirect(`/contratos/${contractId}`);
+}
+
+const ALL_DOCUMENT_TYPES = [...CONTRACT_DOCUMENT_TYPES, 'outro'] as const;
+
+/**
+ * Salva um documento de habilitação/regularidade. Tipos fixos (cartão CNPJ, certidões etc.)
+ * têm no máximo um registro por contrato — reenviar atualiza o existente em vez de duplicar.
+ * "outro" sempre cria um novo registro, para permitir vários documentos avulsos.
+ */
+export async function upsertContractDocument(formData: FormData) {
+  await requireProfile();
+  const supabase = await createServerSupabaseClient();
+
+  const contractId = String(formData.get('contractId') ?? '');
+  const documentType = String(formData.get('documentType') ?? '') as ContractDocumentType;
+  if (!contractId || !ALL_DOCUMENT_TYPES.includes(documentType)) {
+    fail('Documento inválido.');
+  }
+
+  const label = String(formData.get('label') ?? '').trim();
+  if (documentType === 'outro' && !label) {
+    fail('Informe um nome para o documento.');
+  }
+
+  const validityDate = String(formData.get('validityDate') ?? '').trim() || null;
+  const file = extractPdfFile(formData, 'file', 'do documento');
+
+  let documentId: string;
+
+  if (documentType === 'outro') {
+    const { data: inserted, error } = await supabase
+      .from('contract_documents')
+      .insert({ contract_id: contractId, document_type: documentType, label, validity_date: validityDate })
+      .select('id')
+      .single();
+    if (error || !inserted) fail('Não foi possível salvar o documento.');
+    documentId = inserted.id;
+  } else {
+    const { data: existingDocument } = await supabase
+      .from('contract_documents')
+      .select('id')
+      .eq('contract_id', contractId)
+      .eq('document_type', documentType)
+      .maybeSingle();
+
+    if (existingDocument) {
+      const { error } = await supabase
+        .from('contract_documents')
+        .update({ validity_date: validityDate })
+        .eq('id', existingDocument.id);
+      if (error) fail('Não foi possível salvar o documento.');
+      documentId = existingDocument.id;
+    } else {
+      const { data: inserted, error } = await supabase
+        .from('contract_documents')
+        .insert({ contract_id: contractId, document_type: documentType, validity_date: validityDate })
+        .select('id')
+        .single();
+      if (error || !inserted) fail('Não foi possível salvar o documento.');
+      documentId = inserted.id;
+    }
+  }
+
+  if (file) {
+    const extension = file.name.includes('.') ? file.name.split('.').pop() : 'pdf';
+    const path = `${contractId}/documentos/${documentId}.${extension}`;
+    const { error: uploadError } = await supabase.storage.from('contracts').upload(path, file, {
+      contentType: file.type,
+      upsert: true,
+    });
+    if (!uploadError) {
+      await supabase.from('contract_documents').update({ file_path: path }).eq('id', documentId);
+    }
+  }
+
+  revalidatePath(`/contratos/${contractId}`);
+  redirect(`/contratos/${contractId}`);
+}
+
+export async function deleteContractDocument(formData: FormData) {
+  await requireProfile();
+  const supabase = await createServerSupabaseClient();
+
+  const documentId = String(formData.get('documentId') ?? '');
+  const contractId = String(formData.get('contractId') ?? '');
+  if (!documentId || !contractId) fail('Documento inválido.');
+
+  const { data: existing } = await supabase
+    .from('contract_documents')
+    .select('file_path')
+    .eq('id', documentId)
+    .single();
+
+  const { error } = await supabase.from('contract_documents').delete().eq('id', documentId);
+  if (error) fail('Não foi possível excluir o documento.');
 
   if (existing?.file_path) {
     await supabase.storage.from('contracts').remove([existing.file_path]);

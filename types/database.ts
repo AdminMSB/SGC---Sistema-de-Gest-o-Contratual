@@ -9,6 +9,7 @@ import type {
   Role,
 } from './domain';
 import type { ExtractedHighlights } from '@/lib/pdf-extract';
+import type { ContractDocumentType } from '@/lib/contract-documents';
 
 export interface Database {
   public: {
@@ -137,6 +138,30 @@ export interface Database {
         Update: Partial<Database['public']['Tables']['contract_amendments']['Insert']>;
         Relationships: [];
       };
+      contract_documents: {
+        Row: {
+          id: string;
+          contract_id: string;
+          document_type: ContractDocumentType;
+          label: string | null;
+          validity_date: string | null;
+          file_path: string | null;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          contract_id: string;
+          document_type: ContractDocumentType;
+          label?: string | null;
+          validity_date?: string | null;
+          file_path?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['contract_documents']['Insert']>;
+        Relationships: [];
+      };
       contract_status_history: {
         Row: {
           id: string;
@@ -161,13 +186,13 @@ export interface Database {
         Row: {
           id: string;
           contract_id: string;
-          alert_type: 'vencimento' | 'reajuste' | 'nota_fiscal' | 'pagamento_fixo' | 'pagamento_variavel';
+          alert_type: 'vencimento' | 'reajuste' | 'nota_fiscal' | 'pagamento_fixo' | 'pagamento_variavel' | 'documento_vencendo';
           sent_at: string;
         };
         Insert: {
           id?: string;
           contract_id: string;
-          alert_type: 'vencimento' | 'reajuste' | 'nota_fiscal' | 'pagamento_fixo' | 'pagamento_variavel';
+          alert_type: 'vencimento' | 'reajuste' | 'nota_fiscal' | 'pagamento_fixo' | 'pagamento_variavel' | 'documento_vencendo';
           sent_at?: string;
         };
         Update: Partial<Database['public']['Tables']['contract_alert_log']['Insert']>;

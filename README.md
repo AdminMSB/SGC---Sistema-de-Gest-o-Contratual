@@ -139,6 +139,16 @@ Toda mudança de status (`ativo`/`encerrado`) é registrada automaticamente em
 quando — visível na tela de detalhe do contrato. "Expirado" não é um status salvo: é como um
 contrato `ativo` aparece assim que o fim da vigência passa, até alguém marcar como encerrado.
 
+## Documentação de habilitação e regularidade do fornecedor
+
+Cada contrato tem uma checklist para qualificar o fornecedor, com upload (PDF, até 10MB) e
+download de: Cartão CNPJ, contrato social/ato constitutivo, alvará, CND federal, CRF (FGTS),
+CNDT, certidão estadual (ICMS) e municipal (ISS), além de "Outros documentos" avulsos. Cada
+documento tem data de validade opcional e uma situação calculada: **Regular**, **Vencendo**
+(30 dias ou menos) ou **Vencido**. O cron diário envia um e-mail agrupado por contrato (para os
+"E-mails para alerta") listando os documentos vencendo/vencidos, repetido a cada 7 dias até a
+atualização. Dados em `contract_documents`; arquivos em `contracts/{contract_id}/documentos/`.
+
 ## Valor variável
 
 Contratos sem um valor total previsto (ex.: remuneração por comissão/uso) podem marcar "Valor
