@@ -259,7 +259,7 @@ export default async function ContratoDetalhePage({
         </div>
       </div>
 
-      {contract.status === 'encerrado' && (
+      {contract.status === 'encerrado' && !fileUrl && (
         <div
           className={
             'rounded-md border px-4 py-3 text-sm font-medium ' +
@@ -379,7 +379,6 @@ export default async function ContratoDetalhePage({
                   .join(', ')}`}
               />
             )}
-            <SummaryItem label="Distrato" value={contract.has_distrato ? 'Sim' : 'Não'} />
             {contract.notes &&<SummaryItem label="Observações" value={contract.notes} wide />}
           </div>
 
@@ -446,11 +445,28 @@ export default async function ContratoDetalhePage({
       {fileUrl && (
         <Card className="lg:sticky lg:top-6">
           <CardContent className="pt-4 sm:pt-6">
-            <iframe
-              src={fileUrl}
-              title="Arquivo do contrato (PDF)"
-              className="h-[800px] w-full rounded-md border border-border"
-            />
+            <div className="relative">
+              <iframe
+                src={fileUrl}
+                title="Arquivo do contrato (PDF)"
+                className="h-[800px] w-full rounded-md border border-border"
+              />
+              {contract.status === 'encerrado' && (
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden">
+                  <span
+                    className={`-rotate-12 rounded-md border-4 px-8 py-2 text-5xl font-extrabold uppercase tracking-widest opacity-60 ${
+                      contract.closure_reason === 'cancelado'
+                        ? 'border-red-600 text-red-600'
+                        : 'border-slate-500 text-slate-500'
+                    }`}
+                  >
+                    {contract.closure_reason === 'cancelado' || contract.closure_reason === 'encerrado'
+                      ? CLOSURE_REASON_LABELS[contract.closure_reason]
+                      : 'Inativo'}
+                  </span>
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
       )}
