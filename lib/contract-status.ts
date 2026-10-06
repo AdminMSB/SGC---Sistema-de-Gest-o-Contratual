@@ -37,11 +37,22 @@ export function computeVigenciaCountdown(
   const diffDays = differenceInCalendarDays(end, today);
 
   if (diffDays < 0) {
-    return { label: `Vencido há ${Math.abs(diffDays)} dia(s)`, tone: 'destructive' };
+    return { label: `Vencido há ${pluralize(Math.abs(diffDays), 'dia', 'dias')}`, tone: 'destructive' };
+  }
+  if (diffDays === 0) {
+    return { label: 'Vence hoje', tone: 'warning' };
   }
   if (diffDays < 30) {
-    return { label: `Faltam ${diffDays} dia(s)`, tone: 'warning' };
+    return { label: `${remaining(diffDays)} ${pluralize(diffDays, 'dia', 'dias')}`, tone: 'warning' };
   }
-  const months = differenceInCalendarMonths(end, today);
-  return { label: `Faltam ${months} mês(es)`, tone: 'neutral' };
+  const months = Math.max(differenceInCalendarMonths(end, today), 1);
+  return { label: `${remaining(months)} ${pluralize(months, 'mês', 'meses')}`, tone: 'neutral' };
+}
+
+function pluralize(count: number, singular: string, plural: string): string {
+  return `${count} ${count === 1 ? singular : plural}`;
+}
+
+function remaining(count: number): string {
+  return count === 1 ? 'Falta' : 'Faltam';
 }

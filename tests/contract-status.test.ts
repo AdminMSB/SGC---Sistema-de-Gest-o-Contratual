@@ -34,21 +34,31 @@ describe('computeVigenciaCountdown', () => {
 
   it('marca como vencido (vermelho) quando a data já passou', () => {
     expect(computeVigenciaCountdown('2026-01-05', reference)).toEqual({
-      label: 'Vencido há 5 dia(s)',
+      label: 'Vencido há 5 dias',
       tone: 'destructive',
     });
   });
 
   it('marca em dias (amarelo) quando falta menos de 30 dias', () => {
     expect(computeVigenciaCountdown('2026-01-20', reference)).toEqual({
-      label: 'Faltam 10 dia(s)',
+      label: 'Faltam 10 dias',
       tone: 'warning',
     });
   });
 
+  it('usa singular quando falta 1 dia ou 1 mês', () => {
+    expect(computeVigenciaCountdown('2026-01-11', reference)?.label).toBe('Falta 1 dia');
+    expect(computeVigenciaCountdown('2026-01-09', reference)?.label).toBe('Vencido há 1 dia');
+    expect(computeVigenciaCountdown('2026-02-10', reference)?.label).toBe('Falta 1 mês');
+  });
+
+  it('avisa quando vence hoje', () => {
+    expect(computeVigenciaCountdown('2026-01-10', reference)).toEqual({ label: 'Vence hoje', tone: 'warning' });
+  });
+
   it('marca em meses (neutro) quando falta 30 dias ou mais', () => {
     expect(computeVigenciaCountdown('2026-04-10', reference)).toEqual({
-      label: 'Faltam 3 mês(es)',
+      label: 'Faltam 3 meses',
       tone: 'neutral',
     });
   });
