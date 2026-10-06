@@ -467,7 +467,7 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
                 <CheckboxField
                   id={`isWhatsapp-${mode}`}
                   name="isWhatsapp"
-                  label="É WhatsApp"
+                  label="WhatsApp"
                   checked={isWhatsapp}
                   onChange={setIsWhatsapp}
                 />
@@ -486,7 +486,7 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
                 <CheckboxField
                   id={`isWhatsapp2-${mode}`}
                   name="isWhatsapp2"
-                  label="É WhatsApp"
+                  label="WhatsApp"
                   checked={isWhatsapp2}
                   onChange={setIsWhatsapp2}
                 />
@@ -499,7 +499,7 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
           </h2>
 
           <div>
-            <Label htmlFor={`financialEmail-${mode}`}>E-mail financeiro</Label>
+            <Label htmlFor={`financialEmail-${mode}`}>Email</Label>
             <Input
               id={`financialEmail-${mode}`}
               name="financialEmail"

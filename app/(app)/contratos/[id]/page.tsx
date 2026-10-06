@@ -376,7 +376,7 @@ export default async function ContratoDetalhePage({
         <CardContent>
           <div className="flex max-w-2xl flex-col">
             {contract.financial_email && (
-              <DetailRow label="E-mail financeiro" value={contract.financial_email} />
+              <DetailRow label="Email" value={contract.financial_email} />
             )}
             {contract.fixed_payment_date && (
               <DetailRow label="Data do pagamento fixo" value={formatDate(contract.fixed_payment_date)} />
