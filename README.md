@@ -169,7 +169,7 @@ vencimento/reajuste" quando:
 
 Também envia, direto para o **e-mail do fornecedor** ("Email" em Dados do fornecedor), um
 lembrete automático de **emissão/envio de nota fiscal** no(s) dia(s) do mês configurados em
-"Lembrete de nota fiscal" (ex.: `5` para pagamento único, `5, 20` para mais de um pagamento no
+"Alerta faturamento" (apenas números, ex.: `05` para pagamento único, `05, 20` para mais de um pagamento no
 mês) — útil para contratos com parcelas mensais.
 
 E envia, para o **"E-mail financeiro"** (card "Alerta de faturamento"), um alerta com **10 dias corridos**

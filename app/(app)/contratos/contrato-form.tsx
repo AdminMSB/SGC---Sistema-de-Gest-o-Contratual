@@ -11,10 +11,12 @@ import {
   CONTRACT_DETAIL_TYPE_LABELS,
   CONTRACT_TYPE_LABELS,
   DEPARTMENT_LABELS,
+  PAYMENT_PERIODICITY_LABELS,
   READJUSTMENT_INDEX_LABELS,
   type ContractDetailType,
   type ContractType,
   type Department,
+  type PaymentPeriodicity,
   type ReadjustmentIndex,
 } from '@/types/domain';
 import { createContract, updateContract } from './actions';
@@ -22,6 +24,7 @@ import { createContract, updateContract } from './actions';
 const CONTRACT_TYPE_ENTRIES = Object.entries(CONTRACT_TYPE_LABELS) as [ContractType, string][];
 const READJUSTMENT_INDEX_ENTRIES = Object.entries(READJUSTMENT_INDEX_LABELS) as [ReadjustmentIndex, string][];
 const DEPARTMENT_ENTRIES = Object.entries(DEPARTMENT_LABELS) as [Department, string][];
+const PAYMENT_PERIODICITY_ENTRIES = Object.entries(PAYMENT_PERIODICITY_LABELS) as [PaymentPeriodicity, string][];
 
 export interface ManagerOption {
   id: string;
@@ -35,7 +38,7 @@ export interface ContractDefaults {
   contract_detail_type: string | null;
   start_date: string;
   end_date: string | null;
-  renewal_notice_days: number;
+  renewal_notice_days: number | null;
   total_amount_cents: number | null;
   is_variable_value: boolean;
   counterparty_cnpj: string | null;
@@ -49,6 +52,8 @@ export interface ContractDefaults {
   contact_phone: string | null;
   contact_phone_2: string | null;
   is_whatsapp: boolean;
+  is_whatsapp_2: boolean;
+  payment_periodicity: PaymentPeriodicity | null;
   internal_code: string | null;
   department: string | null;
   internal_manager_id: string | null;
@@ -124,6 +129,7 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
   const [hasDistrato, setHasDistrato] = useState(contract?.has_distrato ?? false);
   const [isVariableValue, setIsVariableValue] = useState(contract?.is_variable_value ?? false);
   const [isWhatsapp, setIsWhatsapp] = useState(contract?.is_whatsapp ?? false);
+  const [isWhatsapp2, setIsWhatsapp2] = useState(contract?.is_whatsapp_2 ?? false);
   const titleRef = useRef<HTMLInputElement>(null);
   const startDateRef = useRef<HTMLInputElement>(null);
   const endDateRef = useRef<HTMLInputElement>(null);
@@ -313,21 +319,24 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
               onChange={handleIndeterminateTermChange}
             />
             <div>
-              <Label htmlFor={`renewalNoticeDays-${mode}`}>Aviso prévio (dias)</Label>
+              <Label htmlFor={`renewalNoticeDays-${mode}`}>Aviso prévio (dias, opcional)</Label>
               <Input
                 id={`renewalNoticeDays-${mode}`}
                 name="renewalNoticeDays"
                 type="number"
                 min={0}
-                defaultValue={contract?.renewal_notice_days ?? 30}
-                required
+                placeholder="Ex.: 30"
+                defaultValue={contract?.renewal_notice_days ?? ''}
               />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Sem aviso prévio informado, os alertas de vencimento/reajuste usam 30 dias.
+              </p>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor={`amount-${mode}`}>Valor total do contrato</Label>
+              <Label htmlFor={`amount-${mode}`}>Valor R$</Label>
               <Input
                 ref={amountRef}
                 id={`amount-${mode}`}
@@ -339,19 +348,33 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
                 disabled={isVariableValue}
               />
             </div>
-            <div className="flex items-end pb-2">
-              <CheckboxField
-                id={`isVariableValue-${mode}`}
-                name="isVariableValue"
-                label="Valor variável (sem total previsto)"
-                checked={isVariableValue}
-                onChange={handleVariableValueChange}
-              />
+            <div>
+              <Label htmlFor={`paymentPeriodicity-${mode}`}>Periodicidade</Label>
+              <Select
+                id={`paymentPeriodicity-${mode}`}
+                name="paymentPeriodicity"
+                defaultValue={contract?.payment_periodicity ?? ''}
+              >
+                <option value="">Não informada</option>
+                {PAYMENT_PERIODICITY_ENTRIES.map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </Select>
             </div>
           </div>
 
+          <CheckboxField
+            id={`isVariableValue-${mode}`}
+            name="isVariableValue"
+            label="Valor variável (sem total previsto)"
+            checked={isVariableValue}
+            onChange={handleVariableValueChange}
+          />
+
           <div>
-            <Label htmlFor={`variablePaymentNote-${mode}`}>Pagamento variável adicional (opcional)</Label>
+            <Label htmlFor={`variablePaymentNote-${mode}`}>Variável/Comissão (opcional)</Label>
             <Textarea
               id={`variablePaymentNote-${mode}`}
               name="variablePaymentNote"
@@ -477,6 +500,15 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
                 placeholder="(00) 00000-0000"
                 defaultValue={contract?.contact_phone ?? ''}
               />
+              <div className="mt-2">
+                <CheckboxField
+                  id={`isWhatsapp-${mode}`}
+                  name="isWhatsapp"
+                  label="É WhatsApp"
+                  checked={isWhatsapp}
+                  onChange={setIsWhatsapp}
+                />
+              </div>
             </div>
             <div>
               <Label htmlFor={`contactPhone2-${mode}`}>Telefone de contato (2)</Label>
@@ -487,29 +519,33 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
                 placeholder="(00) 00000-0000"
                 defaultValue={contract?.contact_phone_2 ?? ''}
               />
+              <div className="mt-2">
+                <CheckboxField
+                  id={`isWhatsapp2-${mode}`}
+                  name="isWhatsapp2"
+                  label="É WhatsApp"
+                  checked={isWhatsapp2}
+                  onChange={setIsWhatsapp2}
+                />
+              </div>
             </div>
           </div>
 
-          <CheckboxField
-            id={`isWhatsapp-${mode}`}
-            name="isWhatsapp"
-            label="Um dos telefones acima é WhatsApp"
-            checked={isWhatsapp}
-            onChange={setIsWhatsapp}
-          />
-
           <div>
-            <Label htmlFor={`invoiceReminderDays-${mode}`}>Lembrete de nota fiscal (dia do mês)</Label>
+            <Label htmlFor={`invoiceReminderDays-${mode}`}>Alerta faturamento (dia do mês)</Label>
             <Input
               id={`invoiceReminderDays-${mode}`}
               name="invoiceReminderDays"
               type="text"
-              placeholder="Ex.: 5 (pagamento único) ou 5, 20 (mais de um por mês)"
+              inputMode="numeric"
+              pattern="[0-9,;\s]*"
+              title="Apenas números de 1 a 31, separados por vírgula"
+              placeholder="Ex.: 05, 10"
               defaultValue={contract?.invoice_reminder_days ?? ''}
             />
             <p className="mt-1 text-xs text-muted-foreground">
-              Envia um e-mail automático para o &quot;Email&quot; do fornecedor acima, todo mês, no(s)
-              dia(s) informado(s), lembrando de emitir/enviar a nota fiscal.
+              Apenas números (um ou mais dias, separados por vírgula). Envia um e-mail automático para o
+              &quot;Email&quot; do fornecedor acima, todo mês, nesse(s) dia(s), lembrando de emitir/enviar a nota fiscal.
             </p>
           </div>
 

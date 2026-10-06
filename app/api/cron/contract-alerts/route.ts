@@ -13,6 +13,8 @@ import { formatDate } from '@/lib/format';
 export const dynamic = 'force-dynamic';
 
 const PAYMENT_ALERT_NOTICE_DAYS = 10;
+// Aviso prévio é opcional no cadastro; sem ele, os alertas de vencimento/reajuste usam este padrão.
+const DEFAULT_NOTICE_DAYS = 30;
 
 const DOCUMENT_ALERT_REPEAT_DAYS = 7;
 
@@ -89,7 +91,7 @@ export async function GET(request: Request) {
 
   for (const contract of expiring ?? []) {
     if (!contract.alert_emails || !contract.end_date) continue;
-    if (await alreadySent(contract.id, 'vencimento', contract.renewal_notice_days)) continue;
+    if (await alreadySent(contract.id, 'vencimento', contract.renewal_notice_days ?? DEFAULT_NOTICE_DAYS)) continue;
 
     const recipients = contract.alert_emails.split(',').map((email) => email.trim()).filter(Boolean);
     if (recipients.length === 0) continue;
@@ -118,8 +120,8 @@ export async function GET(request: Request) {
   for (const contract of readjustable ?? []) {
     if (!contract.alert_emails || !contract.readjustment_date) continue;
 
-    if (!isWithinNoticeWindow(contract.readjustment_date, contract.renewal_notice_days, today)) continue;
-    if (await alreadySent(contract.id, 'reajuste', contract.renewal_notice_days)) continue;
+    if (!isWithinNoticeWindow(contract.readjustment_date, contract.renewal_notice_days ?? DEFAULT_NOTICE_DAYS, today)) continue;
+    if (await alreadySent(contract.id, 'reajuste', contract.renewal_notice_days ?? DEFAULT_NOTICE_DAYS)) continue;
 
     const recipients = contract.alert_emails.split(',').map((email) => email.trim()).filter(Boolean);
     if (recipients.length === 0) continue;

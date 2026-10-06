@@ -22,6 +22,7 @@ const contractSchema = z.object({
   endDate: z.string(),
   renewalNoticeDays: z.string(),
   amount: z.string(),
+  paymentPeriodicity: z.enum(['mensal', 'bimestral', 'trimestral', 'semestral', 'anual', 'sob_demanda', '']),
   isVariableValue: z.string(),
   readjustmentIndex: z.enum(['igpm', 'ipca', 'inpc', 'outro', '']),
   readjustmentDate: z.string(),
@@ -34,6 +35,7 @@ const contractSchema = z.object({
   contactPhone: z.string(),
   contactPhone2: z.string(),
   isWhatsapp: z.string(),
+  isWhatsapp2: z.string(),
   internalCode: z.string(),
   department: z.enum([
     'administrativo',
@@ -75,6 +77,7 @@ function parseContractFields(formData: FormData) {
     endDate: String(formData.get('endDate') ?? ''),
     renewalNoticeDays: String(formData.get('renewalNoticeDays') ?? ''),
     amount: String(formData.get('amount') ?? ''),
+    paymentPeriodicity: String(formData.get('paymentPeriodicity') ?? ''),
     isVariableValue: String(formData.get('isVariableValue') ?? ''),
     readjustmentIndex: String(formData.get('readjustmentIndex') ?? ''),
     readjustmentDate: String(formData.get('readjustmentDate') ?? ''),
@@ -87,6 +90,7 @@ function parseContractFields(formData: FormData) {
     contactPhone: String(formData.get('contactPhone') ?? ''),
     contactPhone2: String(formData.get('contactPhone2') ?? ''),
     isWhatsapp: String(formData.get('isWhatsapp') ?? ''),
+    isWhatsapp2: String(formData.get('isWhatsapp2') ?? ''),
     internalCode: String(formData.get('internalCode') ?? ''),
     department: String(formData.get('department') ?? ''),
     internalManagerId: String(formData.get('internalManagerId') ?? ''),
@@ -122,21 +126,22 @@ function parseContractFields(formData: FormData) {
     fail('Informe um e-mail de contato válido.');
   }
 
-  const invoiceReminderDays = Array.from(
-    new Set(
-      parsed.data.invoiceReminderDays
-        .split(/[,;\s]+/)
-        .map((value) => value.trim())
-        .filter(Boolean)
-        .map((value) => Number.parseInt(value, 10)),
-    ),
-  ).sort((a, b) => a - b);
-  const invalidReminderDay = invoiceReminderDays.find((day) => !Number.isInteger(day) || day < 1 || day > 31);
-  if (invalidReminderDay !== undefined) {
-    fail(`Dia inválido para lembrete de nota fiscal: ${invalidReminderDay}. Use números de 1 a 31.`);
+  const reminderTokens = parsed.data.invoiceReminderDays
+    .split(/[,;\s]+/)
+    .map((value) => value.trim())
+    .filter(Boolean);
+  const invalidReminderToken = reminderTokens.find((token) => {
+    const day = Number(token);
+    return !/^\d{1,2}$/.test(token) || day < 1 || day > 31;
+  });
+  if (invalidReminderToken !== undefined) {
+    fail(`Dia inválido no alerta de faturamento: "${invalidReminderToken}". Informe apenas números de 1 a 31, ex.: 05, 10.`);
   }
+  const invoiceReminderDays = Array.from(new Set(reminderTokens.map((token) => Number(token)))).sort(
+    (a, b) => a - b,
+  );
   if (invoiceReminderDays.length > 0 && !contactEmail) {
-    fail('Informe o e-mail do fornecedor para poder enviar o lembrete de nota fiscal.');
+    fail('Informe o e-mail do fornecedor para poder enviar o alerta de faturamento.');
   }
 
   const alertEmails = parsed.data.alertEmails
@@ -163,7 +168,7 @@ function parseContractFields(formData: FormData) {
     endDate,
     amountCents,
     isVariableValue,
-    renewalNoticeDays: Number.isFinite(renewalNoticeDays) && renewalNoticeDays >= 0 ? renewalNoticeDays : 30,
+    renewalNoticeDays: Number.isFinite(renewalNoticeDays) && renewalNoticeDays >= 0 ? renewalNoticeDays : null,
     contractDetailType: parsed.data.contractDetailType.trim() || null,
     readjustmentIndex: parsed.data.readjustmentIndex || null,
     readjustmentDate: parsed.data.readjustmentDate.trim() || null,
@@ -177,6 +182,8 @@ function parseContractFields(formData: FormData) {
     contactPhone: parsed.data.contactPhone.trim() || null,
     contactPhone2: parsed.data.contactPhone2.trim() || null,
     isWhatsapp: parsed.data.isWhatsapp === 'on',
+    isWhatsapp2: parsed.data.isWhatsapp2 === 'on',
+    paymentPeriodicity: parsed.data.paymentPeriodicity || null,
     internalCode: parsed.data.internalCode.trim() || null,
     department: parsed.data.department.trim() || null,
     internalManagerId: parsed.data.internalManagerId.trim() || null,
@@ -239,6 +246,8 @@ export async function createContract(formData: FormData) {
       contact_phone: fields.contactPhone,
       contact_phone_2: fields.contactPhone2,
       is_whatsapp: fields.isWhatsapp,
+      is_whatsapp_2: fields.isWhatsapp2,
+      payment_periodicity: fields.paymentPeriodicity,
       internal_code: fields.internalCode,
       department: fields.department,
       internal_manager_id: fields.internalManagerId,
@@ -361,6 +370,8 @@ export async function updateContract(formData: FormData) {
       contact_phone: fields.contactPhone,
       contact_phone_2: fields.contactPhone2,
       is_whatsapp: fields.isWhatsapp,
+      is_whatsapp_2: fields.isWhatsapp2,
+      payment_periodicity: fields.paymentPeriodicity,
       internal_code: fields.internalCode,
       department: fields.department,
       internal_manager_id: fields.internalManagerId,

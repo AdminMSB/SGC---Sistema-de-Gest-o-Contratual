@@ -5,6 +5,7 @@ import type {
   ClosureReason,
   ContractStatus,
   ContractType,
+  PaymentPeriodicity,
   ReadjustmentIndex,
   Role,
 } from './domain';
@@ -41,7 +42,7 @@ export interface Database {
           closure_reason: ClosureReason | null;
           start_date: string;
           end_date: string | null;
-          renewal_notice_days: number;
+          renewal_notice_days: number | null;
           total_amount_cents: number | null;
           is_variable_value: boolean;
           counterparty_cnpj: string | null;
@@ -57,6 +58,8 @@ export interface Database {
           contact_phone: string | null;
           contact_phone_2: string | null;
           is_whatsapp: boolean;
+          is_whatsapp_2: boolean;
+          payment_periodicity: PaymentPeriodicity | null;
           internal_code: string | null;
           department: string | null;
           internal_manager_id: string | null;
@@ -81,7 +84,7 @@ export interface Database {
           closure_reason?: ClosureReason | null;
           start_date: string;
           end_date?: string | null;
-          renewal_notice_days?: number;
+          renewal_notice_days?: number | null;
           total_amount_cents?: number | null;
           is_variable_value?: boolean;
           counterparty_cnpj?: string | null;
@@ -97,6 +100,8 @@ export interface Database {
           contact_phone?: string | null;
           contact_phone_2?: string | null;
           is_whatsapp?: boolean;
+          is_whatsapp_2?: boolean;
+          payment_periodicity?: PaymentPeriodicity | null;
           internal_code?: string | null;
           department?: string | null;
           internal_manager_id?: string | null;

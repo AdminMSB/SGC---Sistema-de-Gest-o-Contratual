@@ -25,6 +25,7 @@ import {
   CONTRACT_DETAIL_TYPE_LABELS,
   CONTRACT_TYPE_LABELS,
   DEPARTMENT_LABELS,
+  PAYMENT_PERIODICITY_LABELS,
   READJUSTMENT_INDEX_LABELS,
   type ClosureReason,
   type ContractDetailType,
@@ -63,6 +64,31 @@ const DOCUMENT_STATUS_TONES: Record<ContractDocumentStatus, BadgeTone> = {
   vencendo: 'warning',
   vencido: 'destructive',
 };
+
+/** Item do quadro resumo: rótulo pequeno acima do valor, para caber em duas colunas. */
+function SummaryItem({ label, value, wide }: { label: string; value: React.ReactNode; wide?: boolean }) {
+  return (
+    <div className={wide ? 'sm:col-span-2' : undefined}>
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <div className="mt-0.5 text-sm font-medium">{value}</div>
+    </div>
+  );
+}
+
+function WhatsappIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-4 w-4 text-green-600"
+      fill="currentColor"
+      role="img"
+      aria-label="WhatsApp"
+    >
+      <title>WhatsApp</title>
+      <path d="M17.47 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.67-1.61-.92-2.2-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.8.37-.27.3-1.04 1.02-1.04 2.48 0 1.46 1.07 2.88 1.21 3.08.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.69.63.71.23 1.36.2 1.87.12.57-.08 1.76-.72 2.01-1.41.25-.69.25-1.29.17-1.41-.07-.12-.27-.2-.57-.35zM12.04 2C6.5 2 2 6.5 2 12.04c0 1.77.46 3.5 1.34 5.02L2 22l5.07-1.33a10 10 0 0 0 4.97 1.27C17.58 21.94 22 17.5 22 12.04 22 6.5 17.58 2 12.04 2zm0 18.2a8.2 8.2 0 0 1-4.18-1.14l-.3-.18-3.01.79.8-2.93-.2-.31a8.17 8.17 0 0 1-1.26-4.37c0-4.52 3.69-8.2 8.22-8.2 4.52 0 8.2 3.68 8.2 8.2 0 4.53-3.68 8.14-8.27 8.14z" />
+    </svg>
+  );
+}
 
 function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
@@ -193,6 +219,9 @@ export default async function ContratoDetalhePage({
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold">{contract.title}</h1>
+          {contract.counterparty_cnpj && (
+            <p className="mt-0.5 text-xs text-muted-foreground">CNPJ {contract.counterparty_cnpj}</p>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <ContratoForm mode="edit" contract={contract} managers={managers} triggerVariant="secondary" />
@@ -226,11 +255,11 @@ export default async function ContratoDetalhePage({
           <CardTitle>Dados do fornecedor/contrato</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex max-w-2xl flex-col">
-            <DetailRow label="Status" value={<ContractStatusBadge status={displayStatus} />} />
-            <DetailRow label="Categoria" value={CONTRACT_TYPE_LABELS[contract.contract_type]} />
+          <div className="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
+            <SummaryItem label="Status" value={<ContractStatusBadge status={displayStatus} />} />
+            <SummaryItem label="Categoria" value={CONTRACT_TYPE_LABELS[contract.contract_type]} />
             {contract.contract_detail_type && (
-              <DetailRow
+              <SummaryItem
                 label="Detalhamento"
                 value={
                   CONTRACT_DETAIL_TYPE_LABELS[contract.contract_detail_type as ContractDetailType] ??
@@ -238,8 +267,8 @@ export default async function ContratoDetalhePage({
                 }
               />
             )}
-            <DetailRow label="Início da vigência" value={formatDate(contract.start_date)} />
-            <DetailRow
+            <SummaryItem label="Início da vigência" value={formatDate(contract.start_date)} />
+            <SummaryItem
               label="Fim da vigência"
               value={
                 contract.end_date ? (
@@ -259,53 +288,74 @@ export default async function ContratoDetalhePage({
                 )
               }
             />
-            <DetailRow label="Aviso prévio" value={`${contract.renewal_notice_days} dia(s)`} />
-            <DetailRow
-              label="Valor total do contrato"
-              value={contract.is_variable_value ? 'Valor variável' : formatCurrencyCents(contract.total_amount_cents ?? 0)}
+            {contract.renewal_notice_days != null && (
+              <SummaryItem
+                label="Aviso prévio"
+                value={`${contract.renewal_notice_days} ${contract.renewal_notice_days === 1 ? 'dia' : 'dias'}`}
+              />
+            )}
+            <SummaryItem
+              label="Valor R$"
+              value={
+                contract.is_variable_value
+                  ? 'Valor variável'
+                  : `${formatCurrencyCents(contract.total_amount_cents ?? 0)}${
+                      contract.payment_periodicity
+                        ? ` (${PAYMENT_PERIODICITY_LABELS[contract.payment_periodicity].toLowerCase()})`
+                        : ''
+                    }`
+              }
             />
-            {contract.readjustment_index && (
-              <DetailRow
+            {(contract.readjustment_index || contract.readjustment_date) && (
+              <SummaryItem
                 label="Reajuste"
+                value={[
+                  contract.readjustment_index ? READJUSTMENT_INDEX_LABELS[contract.readjustment_index] : null,
+                  contract.readjustment_date ? `previsto para ${formatDate(contract.readjustment_date)}` : null,
+                ]
+                  .filter(Boolean)
+                  .join(' — ')}
+              />
+            )}
+            {contract.contact_email && <SummaryItem label="Email" value={contract.contact_email} />}
+            {contract.representative_name && <SummaryItem label="Contato" value={contract.representative_name} />}
+            {(contract.contact_phone || contract.contact_phone_2) && (
+              <SummaryItem
+                label="Telefone"
                 value={
-                  contract.readjustment_date
-                    ? `${READJUSTMENT_INDEX_LABELS[contract.readjustment_index]} — previsto para ${formatDate(contract.readjustment_date)}`
-                    : READJUSTMENT_INDEX_LABELS[contract.readjustment_index]
+                  <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                    {contract.contact_phone && (
+                      <span className="flex items-center gap-1">
+                        {contract.contact_phone}
+                        {contract.is_whatsapp && <WhatsappIcon />}
+                      </span>
+                    )}
+                    {contract.contact_phone_2 && (
+                      <span className="flex items-center gap-1">
+                        {contract.contact_phone_2}
+                        {contract.is_whatsapp_2 && <WhatsappIcon />}
+                      </span>
+                    )}
+                  </span>
                 }
               />
             )}
-            {contract.variable_payment_note && (
-              <DetailRow label="Pagamento variável adicional" value={contract.variable_payment_note} />
-            )}
-            {contract.notes && <DetailRow label="Observações" value={contract.notes} />}
-            {contract.counterparty_cnpj && (
-              <DetailRow label="CNPJ Fornecedor" value={contract.counterparty_cnpj} />
-            )}
-            {contract.representative_name && (
-              <DetailRow label="Contato" value={contract.representative_name} />
-            )}
-            {contract.contact_email && <DetailRow label="Email" value={contract.contact_email} />}
-            {contract.contact_phone && (
-              <DetailRow
-                label="Telefone de contato"
-                value={contract.is_whatsapp ? `${contract.contact_phone} (WhatsApp)` : contract.contact_phone}
-              />
-            )}
-            {contract.contact_phone_2 && (
-              <DetailRow label="Telefone de contato (2)" value={contract.contact_phone_2} />
-            )}
             {contract.invoice_reminder_days && (
-              <DetailRow
-                label="Lembrete de nota fiscal"
-                value={`Todo dia ${contract.invoice_reminder_days} do mês`}
+              <SummaryItem
+                label="Alerta faturamento"
+                value={`Dia ${contract.invoice_reminder_days
+                  .split(',')
+                  .map((day) => day.trim().padStart(2, '0'))
+                  .join(', ')}`}
               />
             )}
-            <DetailRow label="Arquivo do contrato" value={fileUrl ? 'Sim' : 'Não'} />
-            <DetailRow label="Distrato" value={contract.has_distrato ? 'Sim' : 'Não'} />
-            <DetailRow
-              label="Aditivo"
-              value={amendmentCount > 0 ? `Sim (${amendmentCount})` : 'Não'}
-            />
+            <SummaryItem label="Arquivo do contrato" value={fileUrl ? 'Sim' : 'Não'} />
+            <SummaryItem label="Distrato" value={contract.has_distrato ? 'Sim' : 'Não'} />
+            <SummaryItem label="Aditivo" value={amendmentCount > 0 ? `Sim (${amendmentCount})` : 'Não'} />
+            {contract.variable_payment_note && (
+              <SummaryItem label="Variável/Comissão" value={contract.variable_payment_note} wide />
+            )}
+            {contract.notes && <SummaryItem label="Observações" value={contract.notes} wide />}
           </div>
 
           <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-4">

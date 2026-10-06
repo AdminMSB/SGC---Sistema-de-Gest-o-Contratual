@@ -32,6 +32,7 @@ export type Department =
   | 'diretoria_executiva'
   | 'juridico';
 export type ReadjustmentIndex = 'igpm' | 'ipca' | 'inpc' | 'outro';
+export type PaymentPeriodicity = 'mensal' | 'bimestral' | 'trimestral' | 'semestral' | 'anual' | 'sob_demanda';
 
 export interface CurrentProfile {
   id: string;
@@ -67,7 +68,7 @@ export const CONTRACT_DETAIL_TYPE_LABELS: Record<ContractDetailType, string> = {
 };
 
 export const READJUSTMENT_INDEX_LABELS: Record<ReadjustmentIndex, string> = {
-  igpm: 'IGPM',
+  igpm: 'IGP-M',
   ipca: 'IPCA',
   inpc: 'INPC',
   outro: 'Outro',
@@ -106,3 +107,12 @@ export const DEPARTMENT_LABELS: Record<Department, string> = {
   juridico: 'Jurídico',
 };
 
+
+export const PAYMENT_PERIODICITY_LABELS: Record<PaymentPeriodicity, string> = {
+  mensal: 'Mensal',
+  bimestral: 'Bimestral',
+  trimestral: 'Trimestral',
+  semestral: 'Semestral',
+  anual: 'Anual',
+  sob_demanda: 'Conforme demanda',
+};
