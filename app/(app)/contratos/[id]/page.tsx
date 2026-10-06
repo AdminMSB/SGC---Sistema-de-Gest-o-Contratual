@@ -257,16 +257,18 @@ export default async function ContratoDetalhePage({
         <CardContent>
           <div className="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
             <SummaryItem label="Status" value={<ContractStatusBadge status={displayStatus} />} />
-            <SummaryItem label="Categoria" value={CONTRACT_TYPE_LABELS[contract.contract_type]} />
-            {contract.contract_detail_type && (
-              <SummaryItem
-                label="Detalhamento"
-                value={
-                  CONTRACT_DETAIL_TYPE_LABELS[contract.contract_detail_type as ContractDetailType] ??
-                  contract.contract_detail_type
-                }
-              />
-            )}
+            <SummaryItem
+              label="Categoria"
+              value={[
+                CONTRACT_TYPE_LABELS[contract.contract_type],
+                contract.contract_detail_type
+                  ? (CONTRACT_DETAIL_TYPE_LABELS[contract.contract_detail_type as ContractDetailType] ??
+                    contract.contract_detail_type)
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(' - ')}
+            />
             <SummaryItem label="Início da vigência" value={formatDate(contract.start_date)} />
             <SummaryItem
               label="Fim da vigência"
@@ -306,12 +308,12 @@ export default async function ContratoDetalhePage({
                     }`
               }
             />
-            {(contract.readjustment_index || contract.readjustment_date) && (
+            {contract.readjustment_index && contract.readjustment_index !== 'outro' && (
               <SummaryItem
                 label="Reajuste"
                 value={[
-                  contract.readjustment_index ? READJUSTMENT_INDEX_LABELS[contract.readjustment_index] : null,
-                  contract.readjustment_date ? `previsto para ${formatDate(contract.readjustment_date)}` : null,
+                  READJUSTMENT_INDEX_LABELS[contract.readjustment_index],
+                  contract.readjustment_date ? `data-base ${formatDate(contract.readjustment_date)}` : null,
                 ]
                   .filter(Boolean)
                   .join(' — ')}
