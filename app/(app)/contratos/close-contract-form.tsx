@@ -8,14 +8,14 @@ import { updateContractStatus } from './actions';
 
 const CLOSURE_REASON_ENTRIES = Object.entries(CLOSURE_REASON_LABELS) as [ClosureReason, string][];
 
-/** Botão "Marcar como encerrado" que abre uma escolha de motivo antes de enviar. */
+/** Botão "Encerrar Contrato" que abre uma escolha de motivo antes de enviar. */
 export function CloseContractForm({ contractId }: { contractId: string }) {
   const [choosingReason, setChoosingReason] = useState(false);
 
   if (!choosingReason) {
     return (
       <Button type="button" variant="secondary" size="sm" onClick={() => setChoosingReason(true)}>
-        Marcar como encerrado
+        Encerrar Contrato
       </Button>
     );
   }

@@ -18,7 +18,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ContractStatusBadge } from '@/components/status-badge';
 import { ConfirmSubmitForm } from '@/components/confirm-submit-form';
 import {
   CLOSURE_REASON_LABELS,
@@ -72,6 +71,25 @@ function SummaryItem({ label, value, wide }: { label: string; value: React.React
       <p className="text-xs text-muted-foreground">{label}</p>
       <div className="mt-0.5 text-sm font-medium">{value}</div>
     </div>
+  );
+}
+
+function PhoneIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-4 w-4 text-muted-foreground"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      role="img"
+      aria-label="Telefone"
+    >
+      <title>Telefone</title>
+      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />
+    </svg>
   );
 }
 
@@ -140,7 +158,6 @@ export default async function ContratoDetalhePage({
 
   const managers = (profiles ?? []).filter((profile) => profile.role === 'gestor');
   const profileNameById = new Map((profiles ?? []).map((profile) => [profile.id, profile.full_name]));
-  const amendmentCount = (amendments ?? []).length;
   const displayStatus = computeDisplayStatus(contract.status, contract.end_date);
   const vigenciaCountdown = computeVigenciaCountdown(contract.end_date);
 
@@ -222,6 +239,11 @@ export default async function ContratoDetalhePage({
           {contract.counterparty_cnpj && (
             <p className="mt-0.5 text-xs text-muted-foreground">CNPJ {contract.counterparty_cnpj}</p>
           )}
+          <div className="mt-1.5">
+            <Badge tone={displayStatus === 'ativo' ? 'success' : 'neutral'}>
+              {displayStatus === 'ativo' ? 'Ativo' : 'Inativo'}
+            </Badge>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <ContratoForm mode="edit" contract={contract} managers={managers} triggerVariant="secondary" />
@@ -256,7 +278,6 @@ export default async function ContratoDetalhePage({
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
-            <SummaryItem label="Status" value={<ContractStatusBadge status={displayStatus} />} />
             <SummaryItem
               label="Categoria"
               value={[
@@ -296,18 +317,23 @@ export default async function ContratoDetalhePage({
                 value={`${contract.renewal_notice_days} ${contract.renewal_notice_days === 1 ? 'dia' : 'dias'}`}
               />
             )}
-            <SummaryItem
-              label="Valor R$"
-              value={
-                contract.is_variable_value
-                  ? 'Valor variável'
-                  : `${formatCurrencyCents(contract.total_amount_cents ?? 0)}${
-                      contract.payment_periodicity
-                        ? ` (${PAYMENT_PERIODICITY_LABELS[contract.payment_periodicity].toLowerCase()})`
-                        : ''
-                    }`
-              }
-            />
+            <div className="grid grid-cols-1 gap-x-8 gap-y-4 sm:col-span-2 sm:grid-cols-2">
+              <SummaryItem
+                label="Valor R$"
+                value={
+                  contract.is_variable_value
+                    ? 'Valor variável'
+                    : `${formatCurrencyCents(contract.total_amount_cents ?? 0)}${
+                        contract.payment_periodicity
+                          ? ` (${PAYMENT_PERIODICITY_LABELS[contract.payment_periodicity].toLowerCase()})`
+                          : ''
+                      }`
+                }
+              />
+              {contract.variable_payment_note && (
+                <SummaryItem label="Variável/Comissão" value={contract.variable_payment_note} />
+              )}
+            </div>
             {contract.readjustment_index && contract.readjustment_index !== 'outro' && (
               <SummaryItem
                 label="Reajuste"
@@ -327,13 +353,15 @@ export default async function ContratoDetalhePage({
                 value={
                   <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
                     {contract.contact_phone && (
-                      <span className="flex items-center gap-1">
+                      <span className="flex items-center gap-1.5">
+                        <PhoneIcon />
                         {contract.contact_phone}
                         {contract.is_whatsapp && <WhatsappIcon />}
                       </span>
                     )}
                     {contract.contact_phone_2 && (
-                      <span className="flex items-center gap-1">
+                      <span className="flex items-center gap-1.5">
+                        <PhoneIcon />
                         {contract.contact_phone_2}
                         {contract.is_whatsapp_2 && <WhatsappIcon />}
                       </span>
@@ -351,13 +379,8 @@ export default async function ContratoDetalhePage({
                   .join(', ')}`}
               />
             )}
-            <SummaryItem label="Arquivo do contrato" value={fileUrl ? 'Sim' : 'Não'} />
             <SummaryItem label="Distrato" value={contract.has_distrato ? 'Sim' : 'Não'} />
-            <SummaryItem label="Aditivo" value={amendmentCount > 0 ? `Sim (${amendmentCount})` : 'Não'} />
-            {contract.variable_payment_note && (
-              <SummaryItem label="Variável/Comissão" value={contract.variable_payment_note} wide />
-            )}
-            {contract.notes && <SummaryItem label="Observações" value={contract.notes} wide />}
+            {contract.notes &&<SummaryItem label="Observações" value={contract.notes} wide />}
           </div>
 
           <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-4">
