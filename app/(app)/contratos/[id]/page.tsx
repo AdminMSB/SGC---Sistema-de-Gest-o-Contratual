@@ -51,10 +51,9 @@ const CLOSURE_BANNER_CLASSES: Record<ClosureReason, string> = {
   cancelado: 'border-destructive/30 bg-destructive/10 text-destructive',
 };
 
-const TIMELINE_TYPE_TONES: Record<'Contrato' | 'Aditivo' | 'Distrato', BadgeTone> = {
+const TIMELINE_TYPE_TONES: Record<'Contrato' | 'Aditivo', BadgeTone> = {
   Contrato: 'info',
   Aditivo: 'neutral',
-  Distrato: 'destructive',
 };
 
 const DOCUMENT_STATUS_TONES: Record<ContractDocumentStatus, BadgeTone> = {
@@ -148,14 +147,6 @@ export default async function ContratoDetalhePage({
     fileUrl = signed?.signedUrl ?? null;
   }
 
-  let distratoFileUrl: string | null = null;
-  if (contract.distrato_file_path) {
-    const { data: signed } = await supabase.storage
-      .from('contracts')
-      .createSignedUrl(contract.distrato_file_path, SIGNED_URL_TTL_SECONDS);
-    distratoFileUrl = signed?.signedUrl ?? null;
-  }
-
   const managers = (profiles ?? []).filter((profile) => profile.role === 'gestor');
   const profileNameById = new Map((profiles ?? []).map((profile) => [profile.id, profile.full_name]));
   const displayStatus = computeDisplayStatus(contract.status, contract.end_date);
@@ -191,7 +182,7 @@ export default async function ContratoDetalhePage({
 
   const timelineEntries: {
     date: string;
-    type: 'Contrato' | 'Aditivo' | 'Distrato';
+    type: 'Contrato' | 'Aditivo';
     title: string;
     description: string | null;
     fileUrl: string | null;
@@ -210,17 +201,6 @@ export default async function ContratoDetalhePage({
       description: amendment.description,
       fileUrl: amendmentFileUrls.get(amendment.id) ?? null,
     })),
-    ...(contract.has_distrato && contract.distrato_date
-      ? [
-          {
-            date: contract.distrato_date,
-            type: 'Distrato' as const,
-            title: 'Distrato',
-            description: null,
-            fileUrl: distratoFileUrl,
-          },
-        ]
-      : []),
   ].sort((a, b) => a.date.localeCompare(b.date));
 
   return (
@@ -370,15 +350,6 @@ export default async function ContratoDetalhePage({
                 }
               />
             )}
-            {contract.invoice_reminder_days && (
-              <SummaryItem
-                label="Alerta faturamento"
-                value={`Dia ${contract.invoice_reminder_days
-                  .split(',')
-                  .map((day) => day.trim().padStart(2, '0'))
-                  .join(', ')}`}
-              />
-            )}
             {contract.notes &&<SummaryItem label="Observações" value={contract.notes} wide />}
           </div>
 
@@ -422,14 +393,15 @@ export default async function ContratoDetalhePage({
 
       <Card>
         <CardHeader>
-          <CardTitle>Dados gerenciais</CardTitle>
+          <CardTitle>Gerenciamento e Cadastro no D365</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex max-w-2xl flex-col">
             {contract.internal_manager_id && profileNameById.get(contract.internal_manager_id) && (
               <DetailRow label="Gestor do contrato" value={profileNameById.get(contract.internal_manager_id)!} />
             )}
-            {contract.internal_code && <DetailRow label="Código D365" value={contract.internal_code} />}
+            {contract.internal_code && <DetailRow label="Código de contrato" value={contract.internal_code} />}
+            {contract.supplier_code && <DetailRow label="Código do fornecedor" value={contract.supplier_code} />}
             {contract.department && (
               <DetailRow
                 label="Centro de custo"
@@ -697,7 +669,7 @@ export default async function ContratoDetalhePage({
         <CardHeader>
           <CardTitle>Linha do tempo do contrato</CardTitle>
           <CardDescription>
-            Assinatura, aditivos e distrato, em ordem cronológica pela data de cada documento.
+            Assinatura e aditivos, em ordem cronológica pela data de cada documento.
           </CardDescription>
         </CardHeader>
         <CardContent>

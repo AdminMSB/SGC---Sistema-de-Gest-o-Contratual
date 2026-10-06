@@ -2,7 +2,7 @@
 
 Sistema web para gestão do ciclo de vida completo dos contratos da empresa (fornecedores/
 prestadores de serviço, locação e demais serviços): cadastro com upload do PDF assinado,
-extração automática de destaques do documento, aditivos, distrato, histórico de status e
+extração automática de destaques do documento, aditivos, documentação de habilitação do fornecedor e
 alerta automático por e-mail de vencimento/reajuste. Não há controle de pagamentos/parcelas —
 isso é tratado em outro sistema.
 
@@ -10,8 +10,7 @@ isso é tratado em outro sistema.
 
 - **Next.js 14** (App Router) + **TypeScript** — front-end e back-end (Server Actions) em um
   único projeto.
-- **Supabase**: Postgres (banco relacional), Auth (login), Storage (PDF dos contratos, aditivos
-  e distratos). Autorização é aplicada via **Row Level Security** no Postgres, não apenas na
+- **Supabase**: Postgres (banco relacional), Auth (login), Storage (PDF dos contratos, aditivos). Autorização é aplicada via **Row Level Security** no Postgres, não apenas na
   aplicação.
 - **Tailwind CSS** com componentes de UI próprios (sem dependência de biblioteca externa de
   componentes).
@@ -25,7 +24,7 @@ isso é tratado em outro sistema.
 
 | Perfil | Pode fazer |
 |---|---|
-| `fiscal` | Cadastrar, editar e acompanhar contratos, aditivos e distratos |
+| `fiscal` | Cadastrar, editar e acompanhar contratos, aditivos |
 | `gestor` | Igual ao fiscal, e também aparece na lista de "Gestor do contrato" das telas de contrato |
 | `admin` | Tudo do fiscal + excluir contratos + gerenciar usuários e papéis |
 
@@ -123,14 +122,12 @@ categoria, detalhamento e índice/período de reajuste. Os destaques também fic
 `contracts.extracted_highlights` e aparecem na tela de detalhe para consulta — sempre confira
 contra o documento original, é uma conveniência, não uma leitura jurídica.
 
-## Aditivos e distrato
+## Aditivos
 
 - **Aditivos**: histórico de alterações/prorrogações formalizadas após a assinatura original,
   cada um com nome do documento, resumo, status (Em análise/Assinado) e PDF opcional
   (`contract_amendments`). A tela de detalhe mostra "Aditivo: Sim (N)/Não" com base na
   quantidade de registros — não é um campo próprio, é calculado a partir da lista.
-- **Distrato**: flag "Contrato com distrato" + upload do documento de distrato, independente do
-  PDF do contrato original.
 
 ## Histórico de status
 
@@ -156,7 +153,7 @@ variável" em vez de preencher "Valor total do contrato" — o campo fica desabi
 `total_amount_cents` é gravado como `null`. O dashboard e a listagem tratam esse caso mostrando
 "Variável" em vez de um valor em R$.
 
-## Alerta automático por e-mail (vencimento, reajuste, nota fiscal e financeiro)
+## Alerta automático por e-mail (vencimento, reajuste, pagamento e documentos)
 
 Um cron job diário (`vercel.json` → `/api/cron/contract-alerts`, executado pela própria Vercel)
 verifica todos os contratos ativos e envia e-mail para a lista em "E-mails para alerta de
@@ -167,17 +164,11 @@ vencimento/reajuste" quando:
 - a "Data prevista de reajuste" (preenchida manualmente no cadastro) cai dentro do prazo de
   aviso prévio.
 
-Também envia, direto para o **e-mail do fornecedor** ("Email" em Dados do fornecedor), um
-lembrete automático de **emissão/envio de nota fiscal** no(s) dia(s) do mês configurados em
-"Alerta faturamento" (apenas números, ex.: `05` para pagamento único, `05, 20` para mais de um pagamento no
-mês) — útil para contratos com parcelas mensais.
-
 E envia, para o **"E-mail financeiro"** (card "Alerta de faturamento"), um alerta com **10 dias corridos**
 de antecedência de cada data de pagamento cadastrada — "Data do pagamento fixo" e "Data do
 pagamento variável" são independentes, já que costumam cair em dias diferentes do mês.
 
-Cada alerta só é enviado uma vez por ciclo (ou, no caso da nota fiscal, uma vez por dia
-configurado) — `contract_alert_log` registra o que já foi notificado e evita reenvio.
+Cada alerta só é enviado uma vez por ciclo — `contract_alert_log` registra o que já foi notificado e evita reenvio.
 
 **Configuração necessária** (variáveis de ambiente):
 

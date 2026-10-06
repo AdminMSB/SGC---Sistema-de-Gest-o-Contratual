@@ -61,6 +61,7 @@ export interface Database {
           is_whatsapp_2: boolean;
           payment_periodicity: PaymentPeriodicity | null;
           internal_code: string | null;
+          supplier_code: string | null;
           department: string | null;
           internal_manager_id: string | null;
           alert_emails: string | null;
@@ -103,6 +104,7 @@ export interface Database {
           is_whatsapp_2?: boolean;
           payment_periodicity?: PaymentPeriodicity | null;
           internal_code?: string | null;
+          supplier_code?: string | null;
           department?: string | null;
           internal_manager_id?: string | null;
           alert_emails?: string | null;

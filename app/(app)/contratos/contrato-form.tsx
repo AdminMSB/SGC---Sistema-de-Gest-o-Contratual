@@ -45,16 +45,15 @@ export interface ContractDefaults {
   readjustment_index: ReadjustmentIndex | null;
   readjustment_date: string | null;
   variable_payment_note: string | null;
-  has_distrato: boolean;
   representative_name: string | null;
   contact_email: string | null;
-  invoice_reminder_days: string | null;
   contact_phone: string | null;
   contact_phone_2: string | null;
   is_whatsapp: boolean;
   is_whatsapp_2: boolean;
   payment_periodicity: PaymentPeriodicity | null;
   internal_code: string | null;
+  supplier_code: string | null;
   department: string | null;
   internal_manager_id: string | null;
   alert_emails: string | null;
@@ -63,8 +62,6 @@ export interface ContractDefaults {
   variable_payment_date: string | null;
   notes: string | null;
   file_path: string | null;
-  distrato_file_path: string | null;
-  distrato_date: string | null;
 }
 
 interface ContratoFormProps {
@@ -126,7 +123,6 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
   const [extracting, setExtracting] = useState(false);
   const [extractionNote, setExtractionNote] = useState<string | null>(null);
   const [indeterminateTerm, setIndeterminateTerm] = useState(mode === 'edit' && !contract?.end_date);
-  const [hasDistrato, setHasDistrato] = useState(contract?.has_distrato ?? false);
   const [isVariableValue, setIsVariableValue] = useState(contract?.is_variable_value ?? false);
   const [isWhatsapp, setIsWhatsapp] = useState(contract?.is_whatsapp ?? false);
   const [isWhatsapp2, setIsWhatsapp2] = useState(contract?.is_whatsapp_2 ?? false);
@@ -238,17 +234,30 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
             Dados do contrato
           </h2>
 
-          <div>
-            <Label htmlFor={`title-${mode}`}>Nome do contrato</Label>
-            <Input
-              ref={titleRef}
-              id={`title-${mode}`}
-              name="title"
-              type="text"
-              placeholder="Ex.: Locação da sede, Licença de software..."
-              defaultValue={contract?.title ?? ''}
-              required
-            />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-[2fr_1fr]">
+            <div>
+              <Label htmlFor={`title-${mode}`}>Fornecedor</Label>
+              <Input
+                ref={titleRef}
+                id={`title-${mode}`}
+                name="title"
+                type="text"
+                placeholder="Nome do fornecedor"
+                defaultValue={contract?.title ?? ''}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor={`counterpartyCnpj-${mode}`}>CNPJ</Label>
+              <Input
+                ref={cnpjRef}
+                id={`counterpartyCnpj-${mode}`}
+                name="counterpartyCnpj"
+                type="text"
+                placeholder="00.000.000/0000-00"
+                defaultValue={contract?.counterparty_cnpj ?? ''}
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -417,55 +426,9 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
             <Textarea id={`notes-${mode}`} name="notes" defaultValue={contract?.notes ?? ''} rows={3} />
           </div>
 
-          <div className="border-t border-border pt-4">
-            <CheckboxField
-              id={`hasDistrato-${mode}`}
-              name="hasDistrato"
-              label="Contrato com distrato"
-              checked={hasDistrato}
-              onChange={setHasDistrato}
-            />
-          </div>
-
-          {hasDistrato && (
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor={`distratoDate-${mode}`}>Data do distrato</Label>
-                <Input
-                  id={`distratoDate-${mode}`}
-                  name="distratoDate"
-                  type="date"
-                  defaultValue={contract?.distrato_date?.slice(0, 10) ?? ''}
-                />
-              </div>
-              <div>
-                <Label htmlFor={`distratoFile-${mode}`}>Documento do distrato (PDF)</Label>
-                <Input id={`distratoFile-${mode}`} name="distratoFile" type="file" accept="application/pdf" />
-                <p className="mt-1 text-xs text-muted-foreground">
-                  PDF, até 10MB.
-                  {mode === 'edit' && contract?.distrato_file_path
-                    ? ' Envie um novo arquivo para substituir o atual.'
-                    : ''}
-                </p>
-              </div>
-            </div>
-          )}
-
           <h2 className="border-t border-border pt-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Dados do fornecedor
           </h2>
-
-          <div>
-            <Label htmlFor={`counterpartyCnpj-${mode}`}>CNPJ Fornecedor</Label>
-            <Input
-              ref={cnpjRef}
-              id={`counterpartyCnpj-${mode}`}
-              name="counterpartyCnpj"
-              type="text"
-              placeholder="00.000.000/0000-00"
-              defaultValue={contract?.counterparty_cnpj ?? ''}
-            />
-          </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -531,24 +494,6 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
             </div>
           </div>
 
-          <div>
-            <Label htmlFor={`invoiceReminderDays-${mode}`}>Alerta faturamento (dia do mês)</Label>
-            <Input
-              id={`invoiceReminderDays-${mode}`}
-              name="invoiceReminderDays"
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9,;\s]*"
-              title="Apenas números de 1 a 31, separados por vírgula"
-              placeholder="Ex.: 05, 10"
-              defaultValue={contract?.invoice_reminder_days ?? ''}
-            />
-            <p className="mt-1 text-xs text-muted-foreground">
-              Apenas números (um ou mais dias, separados por vírgula). Envia um e-mail automático para o
-              &quot;Email&quot; do fornecedor acima, todo mês, nesse(s) dia(s), lembrando de emitir/enviar a nota fiscal.
-            </p>
-          </div>
-
           <h2 className="border-t border-border pt-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Alerta de faturamento
           </h2>
@@ -590,7 +535,7 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
           </p>
 
           <h2 className="border-t border-border pt-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Informações gerenciais internas
+            Gerenciamento e Cadastro no D365
           </h2>
 
           <div className="grid grid-cols-2 gap-4">
@@ -613,7 +558,7 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
               </p>
             </div>
             <div>
-              <Label htmlFor={`internalCode-${mode}`}>Código D365</Label>
+              <Label htmlFor={`internalCode-${mode}`}>Código de contrato</Label>
               <Input
                 id={`internalCode-${mode}`}
                 name="internalCode"
@@ -637,15 +582,26 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
               </Select>
             </div>
             <div>
-              <Label htmlFor={`alertEmails-${mode}`}>E-mails para alerta de vencimento/reajuste</Label>
+              <Label htmlFor={`supplierCode-${mode}`}>Código do fornecedor</Label>
               <Input
-                id={`alertEmails-${mode}`}
-                name="alertEmails"
+                id={`supplierCode-${mode}`}
+                name="supplierCode"
                 type="text"
-                placeholder="fulano@msbbrasil.com, ciclana@msbbrasil.com"
-                defaultValue={contract?.alert_emails ?? ''}
+                placeholder="Código no D365"
+                defaultValue={contract?.supplier_code ?? ''}
               />
             </div>
+          </div>
+
+          <div>
+            <Label htmlFor={`alertEmails-${mode}`}>E-mails para alerta de vencimento/reajuste</Label>
+            <Input
+              id={`alertEmails-${mode}`}
+              name="alertEmails"
+              type="text"
+              placeholder="fulano@msbbrasil.com, ciclana@msbbrasil.com"
+              defaultValue={contract?.alert_emails ?? ''}
+            />
           </div>
           <p className="-mt-2 text-xs text-muted-foreground">
             O envio automático por e-mail acontece uma vez por dia, quando o contrato entra no

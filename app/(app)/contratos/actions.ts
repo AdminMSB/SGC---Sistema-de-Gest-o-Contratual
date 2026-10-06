@@ -27,11 +27,9 @@ const contractSchema = z.object({
   readjustmentIndex: z.enum(['igpm', 'ipca', 'inpc', 'outro', '']),
   readjustmentDate: z.string(),
   variablePaymentNote: z.string(),
-  hasDistrato: z.string(),
-  distratoDate: z.string(),
   representativeName: z.string(),
   contactEmail: z.string(),
-  invoiceReminderDays: z.string(),
+  supplierCode: z.string(),
   contactPhone: z.string(),
   contactPhone2: z.string(),
   isWhatsapp: z.string(),
@@ -82,11 +80,9 @@ function parseContractFields(formData: FormData) {
     readjustmentIndex: String(formData.get('readjustmentIndex') ?? ''),
     readjustmentDate: String(formData.get('readjustmentDate') ?? ''),
     variablePaymentNote: String(formData.get('variablePaymentNote') ?? ''),
-    hasDistrato: String(formData.get('hasDistrato') ?? ''),
-    distratoDate: String(formData.get('distratoDate') ?? ''),
     representativeName: String(formData.get('representativeName') ?? ''),
     contactEmail: String(formData.get('contactEmail') ?? ''),
-    invoiceReminderDays: String(formData.get('invoiceReminderDays') ?? ''),
+    supplierCode: String(formData.get('supplierCode') ?? ''),
     contactPhone: String(formData.get('contactPhone') ?? ''),
     contactPhone2: String(formData.get('contactPhone2') ?? ''),
     isWhatsapp: String(formData.get('isWhatsapp') ?? ''),
@@ -126,24 +122,6 @@ function parseContractFields(formData: FormData) {
     fail('Informe um e-mail de contato válido.');
   }
 
-  const reminderTokens = parsed.data.invoiceReminderDays
-    .split(/[,;\s]+/)
-    .map((value) => value.trim())
-    .filter(Boolean);
-  const invalidReminderToken = reminderTokens.find((token) => {
-    const day = Number(token);
-    return !/^\d{1,2}$/.test(token) || day < 1 || day > 31;
-  });
-  if (invalidReminderToken !== undefined) {
-    fail(`Dia inválido no alerta de faturamento: "${invalidReminderToken}". Informe apenas números de 1 a 31, ex.: 05, 10.`);
-  }
-  const invoiceReminderDays = Array.from(new Set(reminderTokens.map((token) => Number(token)))).sort(
-    (a, b) => a - b,
-  );
-  if (invoiceReminderDays.length > 0 && !contactEmail) {
-    fail('Informe o e-mail do fornecedor para poder enviar o alerta de faturamento.');
-  }
-
   const alertEmails = parsed.data.alertEmails
     .split(/[,;\s]+/)
     .map((email) => email.trim())
@@ -174,11 +152,9 @@ function parseContractFields(formData: FormData) {
     readjustmentDate: parsed.data.readjustmentDate.trim() || null,
     variablePaymentNote: parsed.data.variablePaymentNote.trim() || null,
     counterpartyCnpj: parsed.data.counterpartyCnpj.trim() || null,
-    hasDistrato: parsed.data.hasDistrato === 'on',
-    distratoDate: parsed.data.distratoDate.trim() || null,
     representativeName: parsed.data.representativeName.trim() || null,
     contactEmail: contactEmail || null,
-    invoiceReminderDays: invoiceReminderDays.length > 0 ? invoiceReminderDays.join(', ') : null,
+    supplierCode: parsed.data.supplierCode.trim() || null,
     contactPhone: parsed.data.contactPhone.trim() || null,
     contactPhone2: parsed.data.contactPhone2.trim() || null,
     isWhatsapp: parsed.data.isWhatsapp === 'on',
@@ -220,7 +196,6 @@ export async function createContract(formData: FormData) {
 
   const fields = parseContractFields(formData);
   const file = extractPdfFile(formData, 'file', 'do contrato');
-  const distratoFile = extractPdfFile(formData, 'distratoFile', 'do distrato');
 
   const { data: inserted, error: insertError } = await supabase
     .from('contracts')
@@ -238,11 +213,9 @@ export async function createContract(formData: FormData) {
       readjustment_index: fields.readjustmentIndex,
       readjustment_date: fields.readjustmentDate,
       variable_payment_note: fields.variablePaymentNote,
-      has_distrato: fields.hasDistrato,
-      distrato_date: fields.distratoDate,
       representative_name: fields.representativeName,
       contact_email: fields.contactEmail,
-      invoice_reminder_days: fields.invoiceReminderDays,
+      supplier_code: fields.supplierCode,
       contact_phone: fields.contactPhone,
       contact_phone_2: fields.contactPhone2,
       is_whatsapp: fields.isWhatsapp,
@@ -283,18 +256,6 @@ export async function createContract(formData: FormData) {
     }
   }
 
-  if (distratoFile) {
-    const extension = distratoFile.name.includes('.') ? distratoFile.name.split('.').pop() : 'pdf';
-    const path = `${inserted.id}/distrato.${extension}`;
-    const { error: uploadError } = await supabase.storage.from('contracts').upload(path, distratoFile, {
-      contentType: distratoFile.type,
-      upsert: true,
-    });
-    if (!uploadError) {
-      await supabase.from('contracts').update({ distrato_file_path: path }).eq('id', inserted.id);
-    }
-  }
-
   revalidatePath('/contratos');
   redirect(`/contratos/${inserted.id}`);
 }
@@ -308,11 +269,10 @@ export async function updateContract(formData: FormData) {
 
   const fields = parseContractFields(formData);
   const file = extractPdfFile(formData, 'file', 'do contrato');
-  const distratoFile = extractPdfFile(formData, 'distratoFile', 'do distrato');
 
   const { data: existing } = await supabase
     .from('contracts')
-    .select('id, file_path, distrato_file_path')
+    .select('id, file_path')
     .eq('id', id)
     .single();
   if (!existing) fail('Contrato não encontrado.');
@@ -334,18 +294,6 @@ export async function updateContract(formData: FormData) {
     extractedHighlights = highlights;
   }
 
-  let distratoFilePath = existing.distrato_file_path;
-  if (distratoFile) {
-    const extension = distratoFile.name.includes('.') ? distratoFile.name.split('.').pop() : 'pdf';
-    const path = `${id}/distrato.${extension}`;
-    const { error: uploadError } = await supabase.storage.from('contracts').upload(path, distratoFile, {
-      contentType: distratoFile.type,
-      upsert: true,
-    });
-    if (uploadError) fail('Não foi possível enviar o arquivo do distrato.');
-    distratoFilePath = path;
-  }
-
   const { error: updateError } = await supabase
     .from('contracts')
     .update({
@@ -362,11 +310,9 @@ export async function updateContract(formData: FormData) {
       readjustment_index: fields.readjustmentIndex,
       readjustment_date: fields.readjustmentDate,
       variable_payment_note: fields.variablePaymentNote,
-      has_distrato: fields.hasDistrato,
-      distrato_date: fields.distratoDate,
       representative_name: fields.representativeName,
       contact_email: fields.contactEmail,
-      invoice_reminder_days: fields.invoiceReminderDays,
+      supplier_code: fields.supplierCode,
       contact_phone: fields.contactPhone,
       contact_phone_2: fields.contactPhone2,
       is_whatsapp: fields.isWhatsapp,
@@ -382,7 +328,6 @@ export async function updateContract(formData: FormData) {
       ...(file ? { extracted_highlights: extractedHighlights } : {}),
       notes: fields.notes || null,
       file_path: filePath,
-      distrato_file_path: distratoFilePath,
     })
     .eq('id', id);
 
