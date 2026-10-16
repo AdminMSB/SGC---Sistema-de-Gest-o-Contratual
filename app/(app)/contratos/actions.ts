@@ -8,7 +8,11 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { parseCurrencyToCents } from '@/lib/format';
 import { extractTextFromPdf } from '@/lib/pdf-text';
 import { extractHighlightsFromText, type ExtractedHighlights } from '@/lib/pdf-extract';
-import { CONTRACT_DOCUMENT_TYPES, type ContractDocumentType } from '@/lib/contract-documents';
+import {
+  CONTRACT_DOCUMENT_TYPES,
+  documentTypeHasValidity,
+  type ContractDocumentType,
+} from '@/lib/contract-documents';
 
 const ACCEPTED_FILE_TYPES = ['application/pdf'];
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
@@ -479,12 +483,15 @@ export async function upsertContractDocument(formData: FormData) {
     fail('Informe um nome para o documento.');
   }
 
-  const validityDate = String(formData.get('validityDate') ?? '').trim() || null;
+  const validityDate = documentTypeHasValidity(documentType)
+    ? String(formData.get('validityDate') ?? '').trim() || null
+    : null;
   const file = extractPdfFile(formData, 'file', 'do documento');
 
   let documentId: string;
 
   if (documentType === 'outro') {
+    if (!file) fail('Anexe o arquivo PDF do documento.');
     const { data: inserted, error } = await supabase
       .from('contract_documents')
       .insert({ contract_id: contractId, document_type: documentType, label, validity_date: validityDate })
@@ -508,6 +515,7 @@ export async function upsertContractDocument(formData: FormData) {
       if (error) fail('Não foi possível salvar o documento.');
       documentId = existingDocument.id;
     } else {
+      if (!file) fail('Anexe o arquivo PDF do documento.');
       const { data: inserted, error } = await supabase
         .from('contract_documents')
         .insert({ contract_id: contractId, document_type: documentType, validity_date: validityDate })

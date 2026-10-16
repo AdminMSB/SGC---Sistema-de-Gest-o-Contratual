@@ -56,3 +56,18 @@ export function computeDocumentStatus(
   if (diff <= DOCUMENT_EXPIRY_WARNING_DAYS) return 'vencendo';
   return 'regular';
 }
+
+/** Tipos que costumam ter data de validade — só para eles o formulário pede a data. */
+export const DOCUMENT_TYPES_WITH_VALIDITY: ContractDocumentType[] = [
+  'alvara',
+  'cnd_federal',
+  'crf_fgts',
+  'cndt',
+  'certidao_estadual',
+  'certidao_municipal',
+  'outro',
+];
+
+export function documentTypeHasValidity(type: ContractDocumentType): boolean {
+  return DOCUMENT_TYPES_WITH_VALIDITY.includes(type);
+}

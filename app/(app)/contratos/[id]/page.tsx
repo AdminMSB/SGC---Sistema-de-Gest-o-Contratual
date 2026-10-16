@@ -32,6 +32,7 @@ import {
   type Department,
 } from '@/types/domain';
 import { ContratoForm } from '../contrato-form';
+import { DocumentAddForm } from '../document-add-form';
 import { CloseContractForm } from '../close-contract-form';
 import {
   addAmendment,
@@ -39,7 +40,6 @@ import {
   deleteContract,
   deleteContractDocument,
   updateContractStatus,
-  upsertContractDocument,
 } from '../actions';
 
 // URL assinada de longa duração — a página fica aberta enquanto a pessoa revisa o contrato,
@@ -193,7 +193,16 @@ export default async function ContratoDetalhePage({
   ).length;
   const expiringDocumentCount = documentStatuses.filter((status) => status === 'vencendo').length;
   const expiredDocumentCount = documentStatuses.filter((status) => status === 'vencido').length;
-  const otherDocuments = documentList.filter((document) => document.document_type === 'outro');
+  const pendingDocumentTypes = CONTRACT_DOCUMENT_TYPES.filter(
+    (type) => !documentList.some((document) => document.document_type === type && document.file_path),
+  );
+  const documentOrder = (type: string) => {
+    const index = (CONTRACT_DOCUMENT_TYPES as readonly string[]).indexOf(type);
+    return index === -1 ? CONTRACT_DOCUMENT_TYPES.length : index;
+  };
+  const sortedDocuments = [...documentList].sort(
+    (a, b) => documentOrder(a.document_type) - documentOrder(b.document_type),
+  );
 
   const timelineEntries: {
     date: string;
@@ -463,7 +472,7 @@ export default async function ContratoDetalhePage({
         <CardHeader>
           <CardTitle>Documentação de habilitação e regularidade</CardTitle>
           <CardDescription>
-            Documentos para qualificar o fornecedor. Certidões com validade entram em alerta 30 dias antes do
+            Documentos para qualificar o fornecedor. Alvará e certidões com validade entram em alerta 30 dias antes do
             vencimento.
           </CardDescription>
         </CardHeader>
@@ -475,135 +484,71 @@ export default async function ContratoDetalhePage({
             {expiringDocumentCount > 0 && <Badge tone="warning">{expiringDocumentCount} vencendo</Badge>}
             {expiredDocumentCount > 0 && <Badge tone="destructive">{expiredDocumentCount} vencido(s)</Badge>}
           </div>
+          {pendingDocumentTypes.length > 0 && (
+            <p className="mb-4 text-sm text-muted-foreground">
+              Pendentes: {pendingDocumentTypes.map((type) => CONTRACT_DOCUMENT_TYPE_LABELS[type]).join('; ')}.
+            </p>
+          )}
 
-          <div className="flex flex-col divide-y divide-border">
-            {CONTRACT_DOCUMENT_TYPES.map((type) => {
-              const document = documentList.find((item) => item.document_type === type);
-              const status = computeDocumentStatus(document?.file_path ?? null, document?.validity_date ?? null);
-              const url = document ? documentFileUrls.get(document.id) : undefined;
-              return (
-                <div key={type} className="flex flex-col gap-3 py-3 lg:flex-row lg:items-end lg:justify-between">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-sm font-medium">{CONTRACT_DOCUMENT_TYPE_LABELS[type]}</span>
-                    <Badge tone={DOCUMENT_STATUS_TONES[status]}>{CONTRACT_DOCUMENT_STATUS_LABELS[status]}</Badge>
-                    {url && (
-                      <a href={url} target="_blank" rel="noreferrer" className="text-sm text-primary hover:underline">
-                        Baixar PDF
-                      </a>
-                    )}
-                  </div>
-                  <form action={upsertContractDocument} className="flex flex-wrap items-end gap-2">
-                    <input type="hidden" name="contractId" value={contract.id} />
-                    <input type="hidden" name="documentType" value={type} />
-                    <div>
-                      <Label htmlFor={`doc-validity-${type}`} className="text-xs">
-                        Validade
-                      </Label>
-                      <Input
-                        id={`doc-validity-${type}`}
-                        name="validityDate"
-                        type="date"
-                        defaultValue={document?.validity_date?.slice(0, 10) ?? ''}
-                        className="w-40"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor={`doc-file-${type}`} className="text-xs">
-                        {document?.file_path ? 'Substituir arquivo (PDF)' : 'Arquivo (PDF)'}
-                      </Label>
-                      <Input id={`doc-file-${type}`} name="file" type="file" accept="application/pdf" />
-                    </div>
-                    <Button type="submit" variant="secondary" size="sm" className="mb-1">
-                      Salvar
-                    </Button>
-                  </form>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="mt-6 border-t border-border pt-4">
-            <h3 className="text-sm font-semibold">Outros documentos</h3>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Documento</TableHead>
-                  <TableHead>Validade</TableHead>
-                  <TableHead>Situação</TableHead>
-                  <TableHead>Arquivo</TableHead>
-                  <TableHead className="w-0" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {otherDocuments.map((document) => {
-                  const status = computeDocumentStatus(document.file_path, document.validity_date);
-                  const url = documentFileUrls.get(document.id);
-                  return (
-                    <TableRow key={document.id}>
-                      <TableCell>{document.label ?? '—'}</TableCell>
-                      <TableCell>{document.validity_date ? formatDate(document.validity_date) : '—'}</TableCell>
-                      <TableCell>
-                        <Badge tone={DOCUMENT_STATUS_TONES[status]}>{CONTRACT_DOCUMENT_STATUS_LABELS[status]}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        {url ? (
-                          <a href={url} target="_blank" rel="noreferrer" className="text-primary hover:underline">
-                            Baixar PDF
-                          </a>
-                        ) : (
-                          '—'
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <ConfirmSubmitForm
-                          action={deleteContractDocument}
-                          confirmMessage="Excluir este documento?"
-                          buttonLabel="Excluir"
-                          buttonSize="sm"
-                        >
-                          <input type="hidden" name="documentId" value={document.id} />
-                          <input type="hidden" name="contractId" value={contract.id} />
-                        </ConfirmSubmitForm>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-                {otherDocuments.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground">
-                      Nenhum outro documento anexado.
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Documento</TableHead>
+                <TableHead>Validade</TableHead>
+                <TableHead>Situação</TableHead>
+                <TableHead>Arquivo</TableHead>
+                <TableHead className="w-0" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sortedDocuments.map((document) => {
+                const status = computeDocumentStatus(document.file_path, document.validity_date);
+                const url = documentFileUrls.get(document.id);
+                return (
+                  <TableRow key={document.id}>
+                    <TableCell>
+                      {document.document_type === 'outro'
+                        ? (document.label ?? 'Outro documento')
+                        : CONTRACT_DOCUMENT_TYPE_LABELS[document.document_type]}
+                    </TableCell>
+                    <TableCell>{document.validity_date ? formatDate(document.validity_date) : '—'}</TableCell>
+                    <TableCell>
+                      <Badge tone={DOCUMENT_STATUS_TONES[status]}>{CONTRACT_DOCUMENT_STATUS_LABELS[status]}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      {url ? (
+                        <a href={url} target="_blank" rel="noreferrer" className="text-primary hover:underline">
+                          Baixar PDF
+                        </a>
+                      ) : (
+                        '—'
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <ConfirmSubmitForm
+                        action={deleteContractDocument}
+                        confirmMessage="Excluir este documento?"
+                        buttonLabel="Excluir"
+                        buttonSize="sm"
+                      >
+                        <input type="hidden" name="documentId" value={document.id} />
+                        <input type="hidden" name="contractId" value={contract.id} />
+                      </ConfirmSubmitForm>
                     </TableCell>
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                );
+              })}
+              {sortedDocuments.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center text-muted-foreground">
+                    Nenhum documento anexado ainda.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
 
-            <form action={upsertContractDocument} className="mt-4 flex flex-wrap items-end gap-2">
-              <input type="hidden" name="contractId" value={contract.id} />
-              <input type="hidden" name="documentType" value="outro" />
-              <div>
-                <Label htmlFor="doc-outro-label" className="text-xs">
-                  Nome do documento
-                </Label>
-                <Input id="doc-outro-label" name="label" type="text" placeholder="Ex.: Licença ambiental" required />
-              </div>
-              <div>
-                <Label htmlFor="doc-outro-validity" className="text-xs">
-                  Validade (opcional)
-                </Label>
-                <Input id="doc-outro-validity" name="validityDate" type="date" className="w-40" />
-              </div>
-              <div>
-                <Label htmlFor="doc-outro-file" className="text-xs">
-                  Arquivo (PDF)
-                </Label>
-                <Input id="doc-outro-file" name="file" type="file" accept="application/pdf" />
-              </div>
-              <Button type="submit" variant="secondary" size="sm" className="mb-1">
-                Adicionar
-              </Button>
-            </form>
-          </div>
+          <DocumentAddForm contractId={contract.id} />
         </CardContent>
       </Card>
 

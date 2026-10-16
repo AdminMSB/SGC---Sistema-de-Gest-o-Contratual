@@ -141,7 +141,7 @@ contrato `ativo` aparece assim que o fim da vigência passa, até alguém marcar
 Cada contrato tem uma checklist para qualificar o fornecedor, com upload (PDF, até 10MB) e
 download de: Cartão CNPJ, contrato social/ato constitutivo, alvará, CND federal, CRF (FGTS),
 CNDT, certidão estadual (ICMS) e municipal (ISS), além de "Outros documentos" avulsos. Cada
-documento tem data de validade opcional e uma situação calculada: **Regular**, **Vencendo**
+documento é escolhido numa lista ao anexar; só alvará, certidões e "outros" pedem data de validade. A situação é calculada: **Regular**, **Vencendo**
 (30 dias ou menos) ou **Vencido**. O cron diário envia um e-mail agrupado por contrato (para os
 "E-mails para alerta") listando os documentos vencendo/vencidos, repetido a cada 7 dias até a
 atualização. Dados em `contract_documents`; arquivos em `contracts/{contract_id}/documentos/`.
