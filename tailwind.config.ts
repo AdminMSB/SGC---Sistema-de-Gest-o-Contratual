@@ -18,6 +18,8 @@ const config: Config = {
         'destructive-foreground': 'hsl(var(--destructive-foreground))',
         success: 'hsl(var(--success))',
         warning: 'hsl(var(--warning))',
+        sidebar: 'hsl(var(--sidebar))',
+        'sidebar-foreground': 'hsl(var(--sidebar-foreground))',
       },
       borderRadius: {
         lg: '0.5rem',
