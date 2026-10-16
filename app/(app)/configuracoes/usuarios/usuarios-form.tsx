@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { ROLE_LABELS, type Role } from '@/types/domain';
-import { inviteUser, updateUserRole } from './actions';
+import { inviteUser, updateUser } from './actions';
 
 const ROLE_ENTRIES = Object.entries(ROLE_LABELS) as [Role, string][];
 
@@ -61,18 +61,23 @@ interface UserRow {
   role: Role;
 }
 
-export function EditRoleDialog({ user }: { user: UserRow }) {
+export function EditUserDialog({ user }: { user: UserRow }) {
   const [open, setOpen] = useState(false);
 
   return (
     <>
       <Button type="button" variant="secondary" size="sm" onClick={() => setOpen(true)}>
-        Editar papel
+        Editar
       </Button>
 
       <Dialog open={open} onClose={() => setOpen(false)} title={`Editar ${user.full_name}`}>
-        <form action={updateUserRole} className="flex flex-col gap-4" onSubmit={() => setOpen(false)}>
+        <form action={updateUser} className="flex flex-col gap-4" onSubmit={() => setOpen(false)}>
           <input type="hidden" name="user_id" value={user.id} />
+
+          <div>
+            <Label htmlFor={`name-${user.id}`}>Nome completo</Label>
+            <Input id={`name-${user.id}`} name="full_name" defaultValue={user.full_name} required />
+          </div>
 
           <div>
             <Label htmlFor={`role-${user.id}`}>Papel</Label>

@@ -58,20 +58,22 @@ export async function inviteUser(formData: FormData): Promise<void> {
   redirect(BASE_PATH);
 }
 
-const roleUpdateSchema = z.object({
+const userUpdateSchema = z.object({
+  full_name: z.string().min(1, 'Informe o nome completo.'),
   role: z.string().refine(isRole, { message: 'Selecione um papel válido.' }),
 });
 
 /**
- * Atualiza o papel de outro usuário. Restrito a `admin` — a policy `profiles_update`
+ * Atualiza nome e papel de um usuário. Restrito a `admin` — a policy `profiles_update`
  * do Postgres já bloqueia isso para não-admins, mas validamos aqui também para dar
  * uma mensagem amigável em vez de deixar a query falhar silenciosamente.
  */
-export async function updateUserRole(formData: FormData): Promise<void> {
+export async function updateUser(formData: FormData): Promise<void> {
   await requireRole('admin');
 
   const userId = String(formData.get('user_id') ?? '').trim();
-  const parsed = roleUpdateSchema.safeParse({
+  const parsed = userUpdateSchema.safeParse({
+    full_name: String(formData.get('full_name') ?? '').trim(),
     role: String(formData.get('role') ?? '').trim(),
   });
 
@@ -81,9 +83,13 @@ export async function updateUserRole(formData: FormData): Promise<void> {
   }
 
   const supabase = await createServerSupabaseClient();
-  const { error } = await supabase.from('profiles').update({ role: parsed.data.role }).eq('id', userId);
+  const { data, error } = await supabase
+    .from('profiles')
+    .update({ full_name: parsed.data.full_name, role: parsed.data.role })
+    .eq('id', userId)
+    .select('id');
 
-  if (error) {
+  if (error || !data || data.length === 0) {
     redirectWithError('Não foi possível atualizar o usuário.');
   }
 

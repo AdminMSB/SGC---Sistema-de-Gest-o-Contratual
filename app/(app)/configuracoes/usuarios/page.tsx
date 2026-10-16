@@ -5,7 +5,7 @@ import { Badge, type BadgeTone } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { ROLE_LABELS, type Role } from '@/types/domain';
-import { InviteUserDialog, EditRoleDialog } from './usuarios-form';
+import { InviteUserDialog, EditUserDialog } from './usuarios-form';
 
 const ROLE_TONES: Record<Role, BadgeTone> = {
   fiscal: 'neutral',
@@ -64,7 +64,7 @@ export default async function UsuariosPage({
                   </TableCell>
                   <TableCell>
                     <div className="flex justify-end">
-                      <EditRoleDialog user={profile} />
+                      <EditUserDialog user={profile} />
                     </div>
                   </TableCell>
                 </TableRow>
