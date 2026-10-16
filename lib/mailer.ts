@@ -6,7 +6,17 @@ import nodemailer from 'nodemailer';
  * conta — o Gmail bloqueia login SMTP simples), gerada em myaccount.google.com/apppasswords.
  * Ver README para o passo a passo.
  */
-export async function sendMail({ to, subject, html }: { to: string[]; subject: string; html: string }) {
+export async function sendMail({
+  to,
+  subject,
+  html,
+  attachments,
+}: {
+  to: string[];
+  subject: string;
+  html: string;
+  attachments?: { filename: string; content: Buffer }[];
+}) {
   const user = process.env.GMAIL_USER;
   const pass = process.env.GMAIL_APP_PASSWORD;
   if (!user || !pass) {
@@ -23,5 +33,6 @@ export async function sendMail({ to, subject, html }: { to: string[]; subject: s
     to: to.join(', '),
     subject,
     html,
+    attachments,
   });
 }

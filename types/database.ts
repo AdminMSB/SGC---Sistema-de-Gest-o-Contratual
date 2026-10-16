@@ -189,6 +189,62 @@ export interface Database {
         Update: Partial<Database['public']['Tables']['contract_status_history']['Insert']>;
         Relationships: [];
       };
+      signature_requests: {
+        Row: {
+          id: string;
+          contract_id: string;
+          status: 'pendente' | 'concluida' | 'cancelada';
+          document_path: string;
+          document_hash: string;
+          signed_document_path: string | null;
+          created_by: string | null;
+          created_at: string;
+          completed_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          contract_id: string;
+          status?: 'pendente' | 'concluida' | 'cancelada';
+          document_path: string;
+          document_hash: string;
+          signed_document_path?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+          completed_at?: string | null;
+        };
+        Update: Partial<Database['public']['Tables']['signature_requests']['Insert']>;
+        Relationships: [];
+      };
+      signature_signers: {
+        Row: {
+          id: string;
+          request_id: string;
+          name: string;
+          email: string;
+          token: string;
+          signed_at: string | null;
+          signed_name: string | null;
+          signed_ip: string | null;
+          signed_user_agent: string | null;
+          email_sent_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          request_id: string;
+          name: string;
+          email: string;
+          token: string;
+          signed_at?: string | null;
+          signed_name?: string | null;
+          signed_ip?: string | null;
+          signed_user_agent?: string | null;
+          email_sent_at?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['signature_signers']['Insert']>;
+        Relationships: [];
+      };
       contract_alert_log: {
         Row: {
           id: string;

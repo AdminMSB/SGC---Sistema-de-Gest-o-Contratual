@@ -31,7 +31,10 @@ import {
   type ContractDetailType,
   type Department,
 } from '@/types/domain';
+import { formatSignatureDateTime, isSignableContractType } from '@/lib/signature';
 import { ContratoForm } from '../contrato-form';
+import { SignatureRequestForm } from '../signature-request-form';
+import { cancelSignatureRequest, resendSignatureInvite } from '../signature-actions';
 import { DocumentAddForm } from '../document-add-form';
 import { CloseContractForm } from '../close-contract-form';
 import {
@@ -154,12 +157,33 @@ export default async function ContratoDetalhePage({
     supabase.from('contract_documents').select('*').eq('contract_id', contract.id).order('created_at'),
   ]);
 
+  const { data: signatureRequests } = await supabase
+    .from('signature_requests')
+    .select('*')
+    .eq('contract_id', contract.id)
+    .order('created_at', { ascending: false });
+  const { data: signatureSigners } = await supabase
+    .from('signature_signers')
+    .select('*')
+    .in('request_id', (signatureRequests ?? []).map((request) => request.id));
+
   let fileUrl: string | null = null;
   if (contract.file_path) {
     const { data: signed } = await supabase.storage
       .from('contracts')
       .createSignedUrl(contract.file_path, SIGNED_URL_TTL_SECONDS);
     fileUrl = signed?.signedUrl ?? null;
+  }
+
+  const signatureList = signatureRequests ?? [];
+  const pendingSignature = signatureList.find((request) => request.status === 'pendente');
+  const signedDocumentUrls = new Map<string, string>();
+  for (const request of signatureList) {
+    if (!request.signed_document_path) continue;
+    const { data: signed } = await supabase.storage
+      .from('contracts')
+      .createSignedUrl(request.signed_document_path, SIGNED_URL_TTL_SECONDS);
+    if (signed?.signedUrl) signedDocumentUrls.set(request.id, signed.signedUrl);
   }
 
   const managers = (profiles ?? []).filter((profile) => profile.role === 'gestor');
@@ -467,6 +491,111 @@ export default async function ContratoDetalhePage({
         </Card>
       )}
       </div>
+
+      {isSignableContractType(contract.contract_type) && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Assinatura digital</CardTitle>
+            <CardDescription>
+              Assinatura eletrônica simples: cada pessoa recebe um link por e-mail, confere o PDF e confirma com nome
+              completo. O sistema registra data, hora, IP e a identificação (hash) do documento, e anexa uma folha de
+              assinaturas ao PDF final. Para assinatura com certificado (ICP-Brasil/gov.br), siga o fluxo manual.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-6">
+            {signatureList.map((request) => {
+              const signers = (signatureSigners ?? [])
+                .filter((signer) => signer.request_id === request.id)
+                .sort((a, b) => a.created_at.localeCompare(b.created_at));
+              const signedUrl = signedDocumentUrls.get(request.id);
+              return (
+                <div key={request.id} className="flex flex-col gap-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge
+                      tone={
+                        request.status === 'concluida' ? 'success' : request.status === 'pendente' ? 'warning' : 'neutral'
+                      }
+                    >
+                      {request.status === 'concluida'
+                        ? 'Concluída'
+                        : request.status === 'pendente'
+                          ? 'Aguardando assinaturas'
+                          : 'Cancelada'}
+                    </Badge>
+                    <span className="text-xs text-muted-foreground">
+                      Enviada em {formatSignatureDateTime(request.created_at)}
+                    </span>
+                    {signedUrl && (
+                      <a href={signedUrl} target="_blank" rel="noreferrer" className="text-sm text-primary hover:underline">
+                        Baixar PDF assinado
+                      </a>
+                    )}
+                    {request.status === 'pendente' && (
+                      <ConfirmSubmitForm
+                        action={cancelSignatureRequest}
+                        confirmMessage="Cancelar esta solicitação? Os links enviados deixarão de funcionar."
+                        buttonLabel="Cancelar solicitação"
+                        buttonSize="sm"
+                      >
+                        <input type="hidden" name="contractId" value={contract.id} />
+                        <input type="hidden" name="requestId" value={request.id} />
+                      </ConfirmSubmitForm>
+                    )}
+                  </div>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Signatário</TableHead>
+                        <TableHead>E-mail</TableHead>
+                        <TableHead>Situação</TableHead>
+                        <TableHead className="w-0" />
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {signers.map((signer) => (
+                        <TableRow key={signer.id}>
+                          <TableCell>{signer.name}</TableCell>
+                          <TableCell>{signer.email}</TableCell>
+                          <TableCell>
+                            {signer.signed_at ? (
+                              <Badge tone="success">Assinou em {formatSignatureDateTime(signer.signed_at)}</Badge>
+                            ) : (
+                              <Badge tone="neutral">Pendente</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {request.status === 'pendente' && !signer.signed_at && (
+                              <form action={resendSignatureInvite}>
+                                <input type="hidden" name="contractId" value={contract.id} />
+                                <input type="hidden" name="signerId" value={signer.id} />
+                                <Button type="submit" variant="secondary" size="sm">
+                                  Reenviar
+                                </Button>
+                              </form>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              );
+            })}
+
+            {!pendingSignature &&
+              (contract.file_path ? (
+                <div className={signatureList.length > 0 ? 'border-t border-border pt-4' : undefined}>
+                  <p className="mb-3 text-sm font-medium">Nova solicitação de assinatura</p>
+                  <SignatureRequestForm contractId={contract.id} />
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Anexe o PDF do contrato para poder enviá-lo para assinatura.
+                </p>
+              ))}
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
