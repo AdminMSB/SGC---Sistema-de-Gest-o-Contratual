@@ -32,6 +32,19 @@ describe('assinatura eletrônica', () => {
     expect((await PDFDocument.load(signed)).getPageCount()).toBe(2);
   });
 
+  it('gera folha parcial listando quem ainda não assinou', async () => {
+    const original = await PDFDocument.create();
+    original.addPage();
+    const signed = await appendSignatureSheet(await original.save(), {
+      contractTitle: 'Contrato',
+      requestId: 'req-3',
+      documentHash: 'abc',
+      signers: [{ name: 'Ana', role: 'Contratada', email: 'ana@x.com', signedAt: '2026-01-10T15:00:00Z', ip: null }],
+      pending: [{ name: 'Bia', role: 'Testemunha', email: 'bia@x.com' }],
+    });
+    expect((await PDFDocument.load(signed)).getPageCount()).toBe(2);
+  });
+
   it('gera só a folha quando não há PDF original legível', async () => {
     const signed = await appendSignatureSheet(new Uint8Array([1, 2, 3]), {
       contractTitle: 'Teste',

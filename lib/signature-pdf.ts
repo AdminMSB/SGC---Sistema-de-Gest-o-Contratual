@@ -6,6 +6,8 @@ export interface SignatureSheetInfo {
   requestId: string;
   documentHash: string;
   signers: { name: string; role?: string | null; email: string; signedAt: string; ip: string | null }[];
+  /** Quem ainda não assinou; quando informado, a folha é marcada como parcial. */
+  pending?: { name: string; role?: string | null; email: string }[];
 }
 
 // A fonte padrão do PDF só codifica Latin-1 + algumas pontuações; troca o resto por "?".
@@ -78,7 +80,14 @@ export async function appendSignatureSheet(
     y -= opts.gap ?? 0;
   };
 
-  draw('Folha de assinaturas', { size: 18, bold: true, gap: 6 });
+  const partial = info.pending !== undefined && info.pending.length > 0;
+  draw(partial ? 'Folha de assinaturas (parcial)' : 'Folha de assinaturas', { size: 18, bold: true, gap: 6 });
+  if (partial) {
+    draw('Documento ainda sem todas as assinaturas. Esta é uma visualização parcial, sem validade final.', {
+      gray: true,
+      gap: 6,
+    });
+  }
   draw(`Documento: ${info.contractTitle}`, { size: 11, gap: 2 });
   draw(`Solicitação: ${info.requestId}`, { gray: true });
   draw(`SHA-256 do documento original: ${info.documentHash}`, { gray: true, gap: 14 });
@@ -94,6 +103,14 @@ export async function appendSignatureSheet(
       }`,
       { gray: true, gap: 8 },
     );
+  }
+
+  if (partial) {
+    draw('Aguardando assinatura', { size: 12, bold: true, gap: 4 });
+    for (const signer of info.pending ?? []) {
+      draw(signer.role ? `${signer.name} - ${signer.role}` : signer.name, { bold: true });
+      draw(`E-mail: ${signer.email}`, { gray: true, gap: 8 });
+    }
   }
 
   y -= 6;

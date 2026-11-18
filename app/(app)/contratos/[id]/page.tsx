@@ -35,6 +35,7 @@ import { formatSignatureDateTime } from '@/lib/signature';
 import { signerRoleLabel } from '@/lib/signature-limits';
 import { ContratoForm } from '../contrato-form';
 import { SignatureRequestForm } from '../signature-request-form';
+import { DocumentToggle } from '../document-toggle';
 import { cancelSignatureRequest, resendSignatureInvite } from '../signature-actions';
 import { DocumentAddForm } from '../document-add-form';
 import { CloseContractForm } from '../close-contract-form';
@@ -525,11 +526,6 @@ export default async function ContratoDetalhePage({
                     <span className="text-xs text-muted-foreground">
                       Enviada em {formatSignatureDateTime(request.created_at)}
                     </span>
-                    {signedUrl && (
-                      <a href={signedUrl} target="_blank" rel="noreferrer" className="text-sm text-primary hover:underline">
-                        Baixar PDF assinado
-                      </a>
-                    )}
                     {request.status === 'pendente' && (
                       <ConfirmSubmitForm
                         action={cancelSignatureRequest}
@@ -542,6 +538,13 @@ export default async function ContratoDetalhePage({
                       </ConfirmSubmitForm>
                     )}
                   </div>
+                  {signedUrl && <DocumentToggle src={signedUrl} label="Mostrar PDF assinado na tela" />}
+                  {request.status === 'pendente' && signers.some((signer) => signer.signed_at) && (
+                    <DocumentToggle
+                      src={`/contratos/${contract.id}/assinatura/${request.id}`}
+                      label="Mostrar documento com as assinaturas até agora"
+                    />
+                  )}
                   <Table>
                     <TableHeader>
                       <TableRow>
