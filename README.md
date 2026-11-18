@@ -184,6 +184,12 @@ Cada alerta só é enviado uma vez por ciclo — `contract_alert_log` registra o
    contra chamadas externas — a Vercel envia automaticamente esse valor como
    `Authorization: Bearer <CRON_SECRET>` nas chamadas que ela mesma dispara para rotas de cron.
 
+   **Alternativa (recomendada se os e-mails caírem em spam):** usar o SMTP da própria empresa definindo
+   `SMTP_HOST`, `SMTP_PORT` (587), `SMTP_USER`, `SMTP_PASSWORD` e, opcionalmente, `SMTP_FROM`. Se `SMTP_HOST`
+   existir, ele tem prioridade sobre o Gmail. No Microsoft 365 é preciso uma caixa dedicada (ex.: sgc@empresa)
+   com "SMTP autenticado" habilitado pelo TI. Em Configurações → E-mail dá para ver o remetente e enviar um
+   e-mail de teste, que mostra a resposta do servidor.
+
 O Gmail tem limite de ~500 e-mails/dia em contas pessoais, o que é bem mais que suficiente para
 este uso. Se o volume de contratos crescer muito, considere migrar para um serviço transacional
 dedicado (Resend, SendGrid) trocando apenas `lib/mailer.ts`.

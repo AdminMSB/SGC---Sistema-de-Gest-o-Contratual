@@ -8,7 +8,7 @@ export default async function ConfiguracoesLayout({ children }: { children: Reac
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-semibold">Configurações</h1>
-        <p className="text-sm text-muted-foreground">Usuários e permissões do sistema.</p>
+        <p className="text-sm text-muted-foreground">Usuários, permissões e envio de e-mails.</p>
       </div>
       <SettingsTabs />
       {children}

@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 const TABS = [
   { href: '/configuracoes/usuarios', label: 'Usuários' },
   { href: '/configuracoes/permissoes', label: 'Permissões' },
+  { href: '/configuracoes/email', label: 'E-mail' },
 ];
 
 export function SettingsTabs() {
