@@ -28,14 +28,12 @@ function isDepartment(value: string): boolean {
 const profileFields = {
   job_title: z.string().max(100, 'Cargo muito longo.'),
   department: z.string().refine(isDepartment, { message: 'Selecione um departamento válido.' }),
-  phone: z.string().max(30, 'Telefone muito longo.'),
 };
 
 function readProfileFields(formData: FormData) {
   return {
     job_title: String(formData.get('job_title') ?? '').trim(),
     department: String(formData.get('department') ?? '').trim(),
-    phone: String(formData.get('phone') ?? '').trim(),
   };
 }
 
@@ -82,11 +80,10 @@ export async function inviteUser(formData: FormData): Promise<void> {
     .update({
       job_title: parsed.data.job_title || null,
       department: parsed.data.department || null,
-      phone: parsed.data.phone || null,
     })
     .eq('id', invited.user.id);
   if (profileError) {
-    redirectWithError('Convite enviado, mas não foi possível salvar cargo/departamento/telefone. Edite o usuário.');
+    redirectWithError('Convite enviado, mas não foi possível salvar cargo/departamento. Edite o usuário.');
   }
 
   revalidatePath(BASE_PATH);
@@ -154,7 +151,6 @@ export async function updateUser(formData: FormData): Promise<void> {
       active,
       job_title: parsed.data.job_title || null,
       department: parsed.data.department || null,
-      phone: parsed.data.phone || null,
     })
     .eq('id', userId)
     .select('id');

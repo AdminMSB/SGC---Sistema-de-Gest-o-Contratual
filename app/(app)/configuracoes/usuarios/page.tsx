@@ -58,7 +58,6 @@ export default async function UsuariosPage({
                 <TableHead>Nome</TableHead>
                 <TableHead>E-mail</TableHead>
                 <TableHead>Departamento</TableHead>
-                <TableHead>Telefone</TableHead>
                 <TableHead>Papel</TableHead>
                 <TableHead>Situação</TableHead>
                 <TableHead>Último acesso</TableHead>
@@ -81,7 +80,6 @@ export default async function UsuariosPage({
                         ? (DEPARTMENT_LABELS[profile.department as Department] ?? profile.department)
                         : '—'}
                     </TableCell>
-                    <TableCell>{profile.phone ?? '—'}</TableCell>
                     <TableCell>
                       <Badge tone={ROLE_TONES[profile.role]}>{ROLE_LABELS[profile.role]}</Badge>
                     </TableCell>
@@ -103,7 +101,7 @@ export default async function UsuariosPage({
               })}
               {profileList.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center text-muted-foreground">
                     Nenhum usuário cadastrado.
                   </TableCell>
                 </TableRow>

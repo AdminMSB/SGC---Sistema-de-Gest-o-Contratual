@@ -25,7 +25,7 @@ isso é tratado em outro sistema.
 | Perfil | Pode fazer |
 |---|---|
 | `gestor` | Vê **apenas os contratos em que é o "Gestor do contrato"** (regra aplicada no banco, com RLS). O que ele pode fazer neles é configurado pelo administrador em Configurações → Permissões: criar/editar, encerrar/reativar, documentos de habilitação, aditivos e assinatura digital. Nunca exclui contratos |
-| `admin` | Vê todos os contratos, exclui contratos, gerencia usuários (cargo, departamento, telefone, ativo/inativo) e permissões, e acessa Configurações |
+| `admin` | Vê todos os contratos, exclui contratos, gerencia usuários (cargo, departamento, ativo/inativo) e permissões, e acessa Configurações |
 
 Usuário **inativo** não consegue entrar (o acesso de login é bloqueado no Supabase Auth). O sistema
 exige ao menos um administrador ativo. Contratos sem "Gestor do contrato" só aparecem para o

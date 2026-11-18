@@ -57,21 +57,15 @@ export function InviteUserDialog() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <Label htmlFor="invite-phone">Telefone</Label>
-              <Input id="invite-phone" name="phone" type="tel" />
-            </div>
-            <div>
-              <Label htmlFor="invite-role">Papel</Label>
-              <Select id="invite-role" name="role" defaultValue="gestor" required>
-                {ROLE_ENTRIES.map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </Select>
-            </div>
+          <div>
+            <Label htmlFor="invite-role">Papel</Label>
+            <Select id="invite-role" name="role" defaultValue="gestor" required>
+              {ROLE_ENTRIES.map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </Select>
           </div>
 
           <div className="flex justify-end gap-2">
@@ -92,7 +86,6 @@ interface UserRow {
   role: Role;
   job_title: string | null;
   department: string | null;
-  phone: string | null;
   active: boolean;
 }
 
@@ -123,11 +116,6 @@ export function EditUserDialog({ user, isSelf }: { user: UserRow; isSelf: boolea
               <Label htmlFor={`dep-${user.id}`}>Departamento</Label>
               <DepartmentSelect id={`dep-${user.id}`} defaultValue={user.department ?? ''} />
             </div>
-          </div>
-
-          <div>
-            <Label htmlFor={`phone-${user.id}`}>Telefone</Label>
-            <Input id={`phone-${user.id}`} name="phone" type="tel" defaultValue={user.phone ?? ''} />
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
