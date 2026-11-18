@@ -6,6 +6,7 @@ import { requireProfile } from '@/lib/auth';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { getAppBaseUrl } from '@/lib/app-url';
 import { sendSignatureInvite } from '@/lib/signature-mail';
+import { signerRoleLabel } from '@/lib/signature-limits';
 import { generateSignatureToken, parseSigners, sha256Hex } from '@/lib/signature';
 
 function back(contractId: string, error?: string): never {
@@ -20,6 +21,7 @@ export async function createSignatureRequest(formData: FormData): Promise<void> 
   const parsed = parseSigners(
     formData.getAll('signerName').map(String),
     formData.getAll('signerEmail').map(String),
+    formData.getAll('signerRole').map(String),
   );
   if (!parsed.ok) back(contractId, parsed.error);
 
@@ -70,10 +72,11 @@ export async function createSignatureRequest(formData: FormData): Promise<void> 
         request_id: requestId,
         name: signer.name,
         email: signer.email,
+        role: signer.role,
         token: generateSignatureToken(),
       })),
     )
-    .select('id, name, email, token');
+    .select('id, name, email, token, role');
   if (signersError || !signers) back(contractId, 'Não foi possível registrar os signatários.');
 
   const baseUrl = getAppBaseUrl();
@@ -84,6 +87,7 @@ export async function createSignatureRequest(formData: FormData): Promise<void> 
         to: signer.email,
         signerName: signer.name,
         contractTitle: contract.title,
+        roleLabel: signerRoleLabel(signer.role),
         link: `${baseUrl}/assinar/${signer.token}`,
       });
       await supabase
@@ -112,7 +116,7 @@ export async function resendSignatureInvite(formData: FormData): Promise<void> {
   const supabase = await createServerSupabaseClient();
   const { data: signer } = await supabase
     .from('signature_signers')
-    .select('id, name, email, token, signed_at, request_id')
+    .select('id, name, email, token, role, signed_at, request_id')
     .eq('id', signerId)
     .single();
   if (!signer || signer.signed_at) back(contractId, 'Signatário inválido ou já assinou.');
@@ -132,6 +136,7 @@ export async function resendSignatureInvite(formData: FormData): Promise<void> {
       to: signer.email,
       signerName: signer.name,
       contractTitle: contract?.title ?? 'Contrato',
+      roleLabel: signerRoleLabel(signer.role),
       link: `${getAppBaseUrl()}/assinar/${signer.token}`,
     });
     await supabase

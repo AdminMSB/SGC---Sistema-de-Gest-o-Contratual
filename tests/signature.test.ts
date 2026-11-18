@@ -45,11 +45,11 @@ describe('assinatura eletrônica', () => {
 
 describe('parseSigners', () => {
   it('aceita signatários válidos e ignora linhas vazias', () => {
-    expect(parseSigners(['Ana', '', 'Bia'], ['ANA@x.com', '', 'bia@x.com'])).toEqual({
+    expect(parseSigners(['Ana', '', 'Bia'], ['ANA@x.com', '', 'bia@x.com'], ['', '', 'testemunha'])).toEqual({
       ok: true,
       signers: [
-        { name: 'Ana', email: 'ana@x.com' },
-        { name: 'Bia', email: 'bia@x.com' },
+        { name: 'Ana', email: 'ana@x.com', role: 'contratante' },
+        { name: 'Bia', email: 'bia@x.com', role: 'testemunha' },
       ],
     });
   });
@@ -59,5 +59,6 @@ describe('parseSigners', () => {
     expect(parseSigners([''], ['ana@x.com']).ok).toBe(false);
     expect(parseSigners([''], ['']).ok).toBe(false);
     expect(parseSigners(['A', 'B'], ['a@x.com', 'a@x.com']).ok).toBe(false);
+    expect(parseSigners(['A'], ['a@x.com'], ['chefe']).ok).toBe(false);
   });
 });

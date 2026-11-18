@@ -32,6 +32,7 @@ import {
   type Department,
 } from '@/types/domain';
 import { formatSignatureDateTime } from '@/lib/signature';
+import { signerRoleLabel } from '@/lib/signature-limits';
 import { ContratoForm } from '../contrato-form';
 import { SignatureRequestForm } from '../signature-request-form';
 import { cancelSignatureRequest, resendSignatureInvite } from '../signature-actions';
@@ -545,6 +546,7 @@ export default async function ContratoDetalhePage({
                     <TableHeader>
                       <TableRow>
                         <TableHead>Signatário</TableHead>
+                        <TableHead>Papel</TableHead>
                         <TableHead>E-mail</TableHead>
                         <TableHead>Situação</TableHead>
                         <TableHead className="w-0" />
@@ -554,6 +556,7 @@ export default async function ContratoDetalhePage({
                       {signers.map((signer) => (
                         <TableRow key={signer.id}>
                           <TableCell>{signer.name}</TableCell>
+                          <TableCell>{signerRoleLabel(signer.role) ?? '—'}</TableCell>
                           <TableCell>{signer.email}</TableCell>
                           <TableCell>
                             {signer.signed_at ? (

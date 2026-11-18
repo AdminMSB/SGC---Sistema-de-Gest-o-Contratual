@@ -227,6 +227,7 @@ export interface Database {
           signed_ip: string | null;
           signed_user_agent: string | null;
           email_sent_at: string | null;
+          role: string | null;
           created_at: string;
         };
         Insert: {
@@ -240,6 +241,7 @@ export interface Database {
           signed_ip?: string | null;
           signed_user_agent?: string | null;
           email_sent_at?: string | null;
+          role?: string | null;
           created_at?: string;
         };
         Update: Partial<Database['public']['Tables']['signature_signers']['Insert']>;

@@ -5,7 +5,7 @@ export interface SignatureSheetInfo {
   contractTitle: string;
   requestId: string;
   documentHash: string;
-  signers: { name: string; email: string; signedAt: string; ip: string | null }[];
+  signers: { name: string; role?: string | null; email: string; signedAt: string; ip: string | null }[];
 }
 
 // A fonte padrão do PDF só codifica Latin-1 + algumas pontuações; troca o resto por "?".
@@ -86,7 +86,7 @@ export async function appendSignatureSheet(
   draw('Assinaturas registradas', { size: 12, bold: true, gap: 4 });
   for (const signer of info.signers) {
     ensureSpace(60);
-    draw(`${signer.name}`, { bold: true });
+    draw(signer.role ? `${signer.name} - ${signer.role}` : signer.name, { bold: true });
     draw(`E-mail: ${signer.email}`, { gray: true });
     draw(
       `Assinado em ${formatSignatureDateTime(signer.signedAt)} (horário de Brasília)${

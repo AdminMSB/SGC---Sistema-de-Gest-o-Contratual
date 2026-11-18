@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from 'node:crypto';
-import { MAX_SIGNERS } from './signature-limits';
+import { MAX_SIGNERS, SIGNER_ROLES, type SignerRole } from './signature-limits';
 
 export function sha256Hex(bytes: Uint8Array): string {
   return createHash('sha256').update(bytes).digest('hex');
@@ -25,12 +25,14 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export interface SignerInput {
   name: string;
   email: string;
+  role: SignerRole;
 }
 
 /** Valida a lista de signatários vinda do formulário; linhas totalmente vazias são ignoradas. */
 export function parseSigners(
   names: string[],
   emails: string[],
+  roles: string[] = [],
 ): { ok: true; signers: SignerInput[] } | { ok: false; error: string } {
   const signers: SignerInput[] = [];
   const total = Math.max(names.length, emails.length);
@@ -40,7 +42,9 @@ export function parseSigners(
     if (!name && !email) continue;
     if (!name) return { ok: false, error: 'Informe o nome de todos os signatários.' };
     if (!EMAIL_PATTERN.test(email)) return { ok: false, error: `E-mail inválido para ${name}.` };
-    signers.push({ name, email });
+    const role = (roles[index] || 'contratante') as SignerRole;
+    if (!SIGNER_ROLES.includes(role)) return { ok: false, error: `Papel inválido para ${name}.` };
+    signers.push({ name, email, role });
   }
   if (signers.length === 0) return { ok: false, error: 'Informe ao menos um signatário.' };
   if (signers.length > MAX_SIGNERS) {

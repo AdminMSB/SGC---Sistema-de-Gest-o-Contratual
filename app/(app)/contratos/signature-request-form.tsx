@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { MAX_SIGNERS } from '@/lib/signature-limits';
+import { Select } from '@/components/ui/select';
+import { MAX_SIGNERS, SIGNER_ROLES, SIGNER_ROLE_LABELS } from '@/lib/signature-limits';
 import { createSignatureRequest } from './signature-actions';
 
 /** Lista de signatários (nome + e-mail) para disparar a assinatura eletrônica do PDF do contrato. */
@@ -17,6 +18,18 @@ export function SignatureRequestForm({ contractId }: { contractId: string }) {
       <input type="hidden" name="contractId" value={contractId} />
       {rows.map((key, index) => (
         <div key={key} className="flex flex-wrap items-end gap-3">
+          <div>
+            <Label htmlFor={`signer-role-${key}`} className="text-xs">
+              Papel
+            </Label>
+            <Select id={`signer-role-${key}`} name="signerRole" defaultValue="contratante" className="w-48">
+              {SIGNER_ROLES.map((role) => (
+                <option key={role} value={role}>
+                  {SIGNER_ROLE_LABELS[role]}
+                </option>
+              ))}
+            </Select>
+          </div>
           <div>
             <Label htmlFor={`signer-name-${key}`} className="text-xs">
               Nome

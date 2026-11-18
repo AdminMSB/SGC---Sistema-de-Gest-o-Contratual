@@ -1,10 +1,11 @@
 import { createAdminSupabaseClient } from '@/lib/supabase/admin';
 import { formatSignatureDateTime } from '@/lib/signature';
-import { Button } from '@/components/ui/button';
+import { signerRoleLabel } from '@/lib/signature-limits';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { signDocument } from './actions';
+import { SignButton } from './sign-button';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,7 +34,7 @@ export default async function AssinarPage({
   const admin = createAdminSupabaseClient();
   const { data: signer } = await admin
     .from('signature_signers')
-    .select('id, name, request_id, signed_at')
+    .select('id, name, role, request_id, signed_at')
     .eq('token', params.token)
     .single();
   if (!signer) {
@@ -78,6 +79,12 @@ export default async function AssinarPage({
         <h1 className="text-2xl font-semibold">{title}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Olá, {signer.name}. Leia o documento abaixo e, se estiver de acordo, assine ao final da página.
+          {signerRoleLabel(signer.role) && (
+            <>
+              {' '}
+              Você assina como <strong>{signerRoleLabel(signer.role)}</strong>.
+            </>
+          )}
         </p>
       </div>
 
@@ -112,7 +119,7 @@ export default async function AssinarPage({
               <span>Li o documento e concordo com o seu conteúdo. Declaro que esta é a minha assinatura.</span>
             </label>
             <div>
-              <Button type="submit">Assinar documento</Button>
+              <SignButton />
             </div>
           </form>
         </CardContent>

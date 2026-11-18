@@ -6,10 +6,12 @@ import { createAdminSupabaseClient } from '@/lib/supabase/admin';
 import { appendSignatureSheet } from '@/lib/signature-pdf';
 import { sendSignedCopy } from '@/lib/signature-mail';
 import { sha256Hex } from '@/lib/signature';
+import { signerRoleLabel } from '@/lib/signature-limits';
 
 function backToSigning(token: string, error?: string): never {
   const base = `/assinar/${token}`;
-  redirect(error ? `${base}?error=${encodeURIComponent(error)}` : base);
+  // O parâmetro muda a URL, garantindo que a página seja renderizada de novo após a ação.
+  redirect(error ? `${base}?error=${encodeURIComponent(error)}` : `${base}?assinado=1`);
 }
 
 /** Registra a assinatura de um signatário pelo link único; quando o último assina, gera o PDF final. */
@@ -65,7 +67,7 @@ export async function signDocument(formData: FormData): Promise<void> {
 
   const { data: allSigners } = await admin
     .from('signature_signers')
-    .select('name, email, signed_at, signed_name, signed_ip')
+    .select('name, email, role, signed_at, signed_name, signed_ip')
     .eq('request_id', request.id)
     .order('created_at');
   const everyoneSigned = (allSigners ?? []).length > 0 && (allSigners ?? []).every((row) => row.signed_at);
@@ -79,7 +81,7 @@ export async function signDocument(formData: FormData): Promise<void> {
 
 async function finalizeRequest(
   request: { id: string; contract_id: string; document_hash: string; created_by: string | null },
-  signers: { name: string; email: string; signed_at: string | null; signed_name: string | null; signed_ip: string | null }[],
+  signers: { name: string; email: string; role: string | null; signed_at: string | null; signed_name: string | null; signed_ip: string | null }[],
   originalBytes: Uint8Array,
 ) {
   const admin = createAdminSupabaseClient();
@@ -92,6 +94,7 @@ async function finalizeRequest(
     documentHash: request.document_hash,
     signers: signers.map((row) => ({
       name: row.signed_name ?? row.name,
+      role: signerRoleLabel(row.role),
       email: row.email,
       signedAt: row.signed_at ?? new Date().toISOString(),
       ip: row.signed_ip,
