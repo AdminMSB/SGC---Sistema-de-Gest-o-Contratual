@@ -3,7 +3,7 @@
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { requireProfile, requireRole } from '@/lib/auth';
+import { requirePermission, requireRole } from '@/lib/auth';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { parseCurrencyToCents } from '@/lib/format';
 import { extractTextFromPdf } from '@/lib/pdf-text';
@@ -195,7 +195,7 @@ async function extractHighlights(file: File): Promise<ExtractedHighlights | null
 }
 
 export async function createContract(formData: FormData) {
-  const profile = await requireProfile();
+  const profile = await requirePermission('create_edit_contract');
   const supabase = await createServerSupabaseClient();
 
   const fields = parseContractFields(formData);
@@ -227,7 +227,7 @@ export async function createContract(formData: FormData) {
       payment_periodicity: fields.paymentPeriodicity,
       internal_code: fields.internalCode,
       department: fields.department,
-      internal_manager_id: fields.internalManagerId,
+      internal_manager_id: profile.role === 'admin' ? fields.internalManagerId : profile.id,
       alert_emails: fields.alertEmails,
       financial_email: fields.financialEmail,
       fixed_payment_date: fields.fixedPaymentDate,
@@ -265,7 +265,7 @@ export async function createContract(formData: FormData) {
 }
 
 export async function updateContract(formData: FormData) {
-  await requireProfile();
+  const profile = await requirePermission('create_edit_contract');
   const supabase = await createServerSupabaseClient();
 
   const id = String(formData.get('id') ?? '');
@@ -324,7 +324,7 @@ export async function updateContract(formData: FormData) {
       payment_periodicity: fields.paymentPeriodicity,
       internal_code: fields.internalCode,
       department: fields.department,
-      internal_manager_id: fields.internalManagerId,
+      internal_manager_id: profile.role === 'admin' ? fields.internalManagerId : profile.id,
       alert_emails: fields.alertEmails,
       financial_email: fields.financialEmail,
       fixed_payment_date: fields.fixedPaymentDate,
@@ -343,7 +343,7 @@ export async function updateContract(formData: FormData) {
 }
 
 export async function updateContractStatus(formData: FormData) {
-  await requireProfile();
+  await requirePermission('close_contract');
   const supabase = await createServerSupabaseClient();
 
   const id = String(formData.get('id') ?? '');
@@ -393,7 +393,7 @@ const amendmentSchema = z.object({
 });
 
 export async function addAmendment(formData: FormData) {
-  await requireProfile();
+  await requirePermission('manage_amendments');
   const supabase = await createServerSupabaseClient();
 
   const contractId = String(formData.get('contractId') ?? '');
@@ -437,7 +437,7 @@ export async function addAmendment(formData: FormData) {
 }
 
 export async function deleteAmendment(formData: FormData) {
-  await requireProfile();
+  await requirePermission('manage_amendments');
   const supabase = await createServerSupabaseClient();
 
   const amendmentId = String(formData.get('amendmentId') ?? '');
@@ -469,7 +469,7 @@ const ALL_DOCUMENT_TYPES = [...CONTRACT_DOCUMENT_TYPES, 'outro'] as const;
  * "outro" sempre cria um novo registro, para permitir vários documentos avulsos.
  */
 export async function upsertContractDocument(formData: FormData) {
-  await requireProfile();
+  await requirePermission('manage_documents');
   const supabase = await createServerSupabaseClient();
 
   const contractId = String(formData.get('contractId') ?? '');
@@ -543,7 +543,7 @@ export async function upsertContractDocument(formData: FormData) {
 }
 
 export async function deleteContractDocument(formData: FormData) {
-  await requireProfile();
+  await requirePermission('manage_documents');
   const supabase = await createServerSupabaseClient();
 
   const documentId = String(formData.get('documentId') ?? '');

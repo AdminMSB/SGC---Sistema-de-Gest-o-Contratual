@@ -20,12 +20,20 @@ export interface Database {
           id: string;
           full_name: string;
           role: Role;
+          job_title: string | null;
+          department: string | null;
+          phone: string | null;
+          active: boolean;
           created_at: string;
         };
         Insert: {
           id: string;
           full_name: string;
           role?: Role;
+          job_title?: string | null;
+          department?: string | null;
+          phone?: string | null;
+          active?: boolean;
           created_at?: string;
         };
         Update: Partial<Database['public']['Tables']['profiles']['Insert']>;
@@ -245,6 +253,20 @@ export interface Database {
           created_at?: string;
         };
         Update: Partial<Database['public']['Tables']['signature_signers']['Insert']>;
+        Relationships: [];
+      };
+      role_permissions: {
+        Row: {
+          role: Role;
+          permission: string;
+          allowed: boolean;
+        };
+        Insert: {
+          role: Role;
+          permission: string;
+          allowed?: boolean;
+        };
+        Update: Partial<Database['public']['Tables']['role_permissions']['Insert']>;
         Relationships: [];
       };
       contract_alert_log: {

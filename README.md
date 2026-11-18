@@ -24,9 +24,13 @@ isso é tratado em outro sistema.
 
 | Perfil | Pode fazer |
 |---|---|
-| `fiscal` | Cadastrar, editar e acompanhar contratos, aditivos |
-| `gestor` | Igual ao fiscal, e também aparece na lista de "Gestor do contrato" das telas de contrato |
-| `admin` | Tudo do fiscal + excluir contratos + gerenciar usuários e papéis |
+| `gestor` | Vê **apenas os contratos em que é o "Gestor do contrato"** (regra aplicada no banco, com RLS). O que ele pode fazer neles é configurado pelo administrador em Configurações → Permissões: criar/editar, encerrar/reativar, documentos de habilitação, aditivos e assinatura digital. Nunca exclui contratos |
+| `admin` | Vê todos os contratos, exclui contratos, gerencia usuários (cargo, departamento, telefone, ativo/inativo) e permissões, e acessa Configurações |
+
+Usuário **inativo** não consegue entrar (o acesso de login é bloqueado no Supabase Auth). O sistema
+exige ao menos um administrador ativo. Contratos sem "Gestor do contrato" só aparecem para o
+administrador. As permissões do gestor são verificadas nas ações do servidor; a visibilidade dos
+contratos e arquivos vale também no banco (migration `0036_users_permissions.sql`).
 
 Sem fluxo de aprovação — é uma ferramenta interna para manter o controle centralizado dos
 contratos, não um workflow de compras.

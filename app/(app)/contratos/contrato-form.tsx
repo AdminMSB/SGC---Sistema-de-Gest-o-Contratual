@@ -68,6 +68,8 @@ interface ContratoFormProps {
   mode: 'create' | 'edit';
   contract?: ContractDefaults;
   managers: ManagerOption[];
+  /** Gestor logado: ele é sempre o responsável pelos contratos que cadastra/edita (não pode escolher outro). */
+  lockedManagerId?: string;
   triggerLabel?: string;
   triggerVariant?: ButtonProps['variant'];
 }
@@ -118,7 +120,14 @@ interface ExtractPdfResponse {
   } | null;
 }
 
-export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVariant }: ContratoFormProps) {
+export function ContratoForm({
+  mode,
+  contract,
+  managers,
+  lockedManagerId,
+  triggerLabel,
+  triggerVariant,
+}: ContratoFormProps) {
   const [open, setOpen] = useState(false);
   const [extracting, setExtracting] = useState(false);
   const [extractionNote, setExtractionNote] = useState<string | null>(null);
@@ -544,7 +553,8 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
               <Select
                 id={`internalManagerId-${mode}`}
                 name="internalManagerId"
-                defaultValue={contract?.internal_manager_id ?? ''}
+                defaultValue={lockedManagerId ?? contract?.internal_manager_id ?? ''}
+                disabled={Boolean(lockedManagerId)}
               >
                 <option value="">Não definido</option>
                 {managers.map((manager) => (
@@ -553,8 +563,11 @@ export function ContratoForm({ mode, contract, managers, triggerLabel, triggerVa
                   </option>
                 ))}
               </Select>
+              {lockedManagerId && <input type="hidden" name="internalManagerId" value={lockedManagerId} />}
               <p className="mt-1 text-xs text-muted-foreground">
-                Lista de usuários com papel Gestor, gerenciada em Configurações → Usuários.
+                {lockedManagerId
+                  ? 'Você é o gestor responsável pelos contratos que cadastra.'
+                  : 'Lista de usuários ativos com papel Gestor, gerenciada em Configurações → Usuários.'}
               </p>
             </div>
             <div>

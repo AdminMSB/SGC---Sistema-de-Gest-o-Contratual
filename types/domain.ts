@@ -1,4 +1,6 @@
-export type Role = 'fiscal' | 'gestor' | 'admin';
+import type { PermissionMap } from '@/lib/permissions';
+
+export type Role = 'gestor' | 'admin';
 
 export type ContractType = 'servico' | 'locacao' | 'fornecimento' | 'comodato' | 'consultoria';
 export type ContractDetailType =
@@ -38,10 +40,11 @@ export interface CurrentProfile {
   id: string;
   fullName: string;
   role: Role;
+  active: boolean;
+  permissions: PermissionMap;
 }
 
 export const ROLE_LABELS: Record<Role, string> = {
-  fiscal: 'Fiscal',
   gestor: 'Gestor',
   admin: 'Administrador',
 };

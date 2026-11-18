@@ -152,7 +152,7 @@ export default async function ContratoDetalhePage({
   if (!contract) notFound();
 
   const [{ data: profiles }, { data: amendments }, { data: documents }] = await Promise.all([
-    supabase.from('profiles').select('id, full_name, role').order('full_name'),
+    supabase.from('profiles').select('id, full_name, role, active').order('full_name'),
     supabase
       .from('contract_amendments')
       .select('*')
@@ -190,7 +190,12 @@ export default async function ContratoDetalhePage({
     if (signed?.signedUrl) signedDocumentUrls.set(request.id, signed.signedUrl);
   }
 
-  const managers = (profiles ?? []).filter((profile) => profile.role === 'gestor');
+  const can = profile.permissions;
+  const isAdmin = profile.role === 'admin';
+  // Gestor só pode ser responsável por si mesmo; o administrador escolhe entre os gestores ativos.
+  const managers = isAdmin
+    ? (profiles ?? []).filter((item) => item.role === 'gestor' && item.active !== false)
+    : [{ id: profile.id, full_name: profile.fullName }];
   const profileNameById = new Map((profiles ?? []).map((profile) => [profile.id, profile.full_name]));
   const displayStatus = computeDisplayStatus(contract.status, contract.end_date);
   const vigenciaCountdown = computeVigenciaCountdown(contract.end_date);
@@ -283,8 +288,16 @@ export default async function ContratoDetalhePage({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <ContratoForm mode="edit" contract={contract} managers={managers} triggerVariant="secondary" />
-          {profile.role === 'admin' && (
+          {can.create_edit_contract && (
+            <ContratoForm
+              mode="edit"
+              contract={contract}
+              managers={managers}
+              lockedManagerId={isAdmin ? undefined : profile.id}
+              triggerVariant="secondary"
+            />
+          )}
+          {isAdmin && (
             <ConfirmSubmitForm
               action={deleteContract}
               confirmMessage="Excluir este contrato e todo o histórico associado? Esta ação não pode ser desfeita."
@@ -410,6 +423,7 @@ export default async function ContratoDetalhePage({
             {contract.notes &&<SummaryItem label="Observações" value={contract.notes} wide />}
           </div>
 
+          {can.close_contract && (
           <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-4">
             {contract.status === 'ativo' && <CloseContractForm contractId={contract.id} />}
             {contract.status === 'encerrado' && (
@@ -422,6 +436,7 @@ export default async function ContratoDetalhePage({
               </form>
             )}
           </div>
+          )}
         </CardContent>
       </Card>
 
@@ -536,7 +551,7 @@ export default async function ContratoDetalhePage({
                     <span className="text-xs text-muted-foreground">
                       Enviada em {formatSignatureDateTime(request.created_at)}
                     </span>
-                    {request.status === 'pendente' && (
+                    {request.status === 'pendente' && can.send_signature && (
                       <ConfirmSubmitForm
                         action={cancelSignatureRequest}
                         confirmMessage="Cancelar esta solicitação? Os links enviados deixarão de funcionar."
@@ -583,7 +598,7 @@ export default async function ContratoDetalhePage({
                             )}
                           </TableCell>
                           <TableCell>
-                            {request.status === 'pendente' && turnIds.has(signer.id) && (
+                            {request.status === 'pendente' && can.send_signature && turnIds.has(signer.id) && (
                               <form action={resendSignatureInvite}>
                                 <input type="hidden" name="contractId" value={contract.id} />
                                 <input type="hidden" name="signerId" value={signer.id} />
@@ -600,6 +615,7 @@ export default async function ContratoDetalhePage({
             })}
 
             {!pendingSignature &&
+              can.send_signature &&
               (contract.file_path ? (
                 <div className={signatureList.length > 0 ? 'border-t border-border pt-4' : undefined}>
                   <p className="mb-3 text-sm font-medium">Nova solicitação de assinatura</p>
@@ -670,6 +686,7 @@ export default async function ContratoDetalhePage({
                       )}
                     </TableCell>
                     <TableCell>
+                      {can.manage_documents && (
                       <ConfirmSubmitForm
                         action={deleteContractDocument}
                         confirmMessage="Excluir este documento?"
@@ -679,6 +696,7 @@ export default async function ContratoDetalhePage({
                         <input type="hidden" name="documentId" value={document.id} />
                         <input type="hidden" name="contractId" value={contract.id} />
                       </ConfirmSubmitForm>
+                      )}
                     </TableCell>
                   </TableRow>
                 );
@@ -693,7 +711,7 @@ export default async function ContratoDetalhePage({
             </TableBody>
           </Table>
 
-          <DocumentAddForm contractId={contract.id} />
+          {can.manage_documents && <DocumentAddForm contractId={contract.id} />}
         </CardContent>
       </Card>
 
@@ -719,6 +737,7 @@ export default async function ContratoDetalhePage({
                   <TableCell>{amendment.document_name ?? '—'}</TableCell>
                   <TableCell>{amendment.description}</TableCell>
                   <TableCell>
+                    {can.manage_amendments && (
                     <ConfirmSubmitForm
                       action={deleteAmendment}
                       confirmMessage="Excluir este aditivo?"
@@ -728,6 +747,7 @@ export default async function ContratoDetalhePage({
                       <input type="hidden" name="amendmentId" value={amendment.id} />
                       <input type="hidden" name="contractId" value={contract.id} />
                     </ConfirmSubmitForm>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
@@ -741,6 +761,7 @@ export default async function ContratoDetalhePage({
             </TableBody>
           </Table>
 
+          {can.manage_amendments && (
           <form action={addAmendment} className="mt-4 flex flex-col gap-4 border-t border-border pt-4">
             <input type="hidden" name="contractId" value={contract.id} />
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -767,6 +788,7 @@ export default async function ContratoDetalhePage({
               </Button>
             </div>
           </form>
+          )}
         </CardContent>
       </Card>
 

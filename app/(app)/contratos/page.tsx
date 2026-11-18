@@ -10,6 +10,7 @@ export default async function ContratosPage({
   searchParams: { error?: string };
 }) {
   const profile = await requireProfile();
+  const isAdmin = profile.role === 'admin';
   const supabase = await createServerSupabaseClient();
 
   const [{ data: contracts }, { data: managers }] = await Promise.all([
@@ -17,7 +18,7 @@ export default async function ContratosPage({
       .from('contracts')
       .select('id, title, contract_type, contract_detail_type, status, end_date, total_amount_cents, is_variable_value')
       .order('created_at', { ascending: false }),
-    supabase.from('profiles').select('id, full_name').eq('role', 'gestor').order('full_name'),
+    supabase.from('profiles').select('id, full_name').eq('role', 'gestor').eq('active', true).order('full_name'),
   ]);
 
   return (
@@ -26,10 +27,18 @@ export default async function ContratosPage({
         <div>
           <h1 className="text-2xl font-semibold">Contratos</h1>
           <p className="text-sm text-muted-foreground">
-            Fornecedores/prestadores de serviço, locação e demais contratos da empresa.
+            {isAdmin
+              ? 'Fornecedores/prestadores de serviço, locação e demais contratos da empresa.'
+              : 'Contratos em que você é o gestor responsável.'}
           </p>
         </div>
-        <ContratoForm mode="create" managers={managers ?? []} />
+        {profile.permissions.create_edit_contract && (
+          <ContratoForm
+            mode="create"
+            managers={isAdmin ? (managers ?? []) : [{ id: profile.id, full_name: profile.fullName }]}
+            lockedManagerId={isAdmin ? undefined : profile.id}
+          />
+        )}
       </div>
 
       {searchParams.error && <p className="text-sm text-destructive">{searchParams.error}</p>}
@@ -39,7 +48,7 @@ export default async function ContratosPage({
           <CardTitle>Todos os contratos</CardTitle>
         </CardHeader>
         <CardContent>
-          <ContratosTable rows={contracts ?? []} isAdmin={profile.role === 'admin'} />
+          <ContratosTable rows={contracts ?? []} isAdmin={isAdmin} />
         </CardContent>
       </Card>
     </div>

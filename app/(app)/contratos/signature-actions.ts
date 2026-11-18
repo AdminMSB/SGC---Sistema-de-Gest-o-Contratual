@@ -2,7 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
-import { requireProfile } from '@/lib/auth';
+import { requirePermission } from '@/lib/auth';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { getAppBaseUrl } from '@/lib/app-url';
 import { sendSignatureInvite } from '@/lib/signature-mail';
@@ -18,7 +18,7 @@ function back(contractId: string, error?: string, notice?: string): never {
 
 /** Cria a solicitação: guarda uma cópia imutável do PDF, gera um link por signatário e envia os e-mails. */
 export async function createSignatureRequest(formData: FormData): Promise<void> {
-  const profile = await requireProfile();
+  const profile = await requirePermission('send_signature');
   const contractId = String(formData.get('contractId') ?? '');
   const parsed = parseSigners(
     formData.getAll('signerName').map(String),
@@ -118,7 +118,7 @@ export async function createSignatureRequest(formData: FormData): Promise<void> 
 }
 
 export async function resendSignatureInvite(formData: FormData): Promise<void> {
-  await requireProfile();
+  await requirePermission('send_signature');
   const contractId = String(formData.get('contractId') ?? '');
   const signerId = String(formData.get('signerId') ?? '');
 
@@ -168,7 +168,7 @@ export async function resendSignatureInvite(formData: FormData): Promise<void> {
 }
 
 export async function cancelSignatureRequest(formData: FormData): Promise<void> {
-  await requireProfile();
+  await requirePermission('send_signature');
   const contractId = String(formData.get('contractId') ?? '');
   const requestId = String(formData.get('requestId') ?? '');
 
