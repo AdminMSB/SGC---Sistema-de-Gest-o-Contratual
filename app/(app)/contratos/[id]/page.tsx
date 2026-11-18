@@ -31,7 +31,7 @@ import {
   type ContractDetailType,
   type Department,
 } from '@/types/domain';
-import { formatSignatureDateTime, isSignableContractType } from '@/lib/signature';
+import { formatSignatureDateTime } from '@/lib/signature';
 import { ContratoForm } from '../contrato-form';
 import { SignatureRequestForm } from '../signature-request-form';
 import { cancelSignatureRequest, resendSignatureInvite } from '../signature-actions';
@@ -492,8 +492,7 @@ export default async function ContratoDetalhePage({
       )}
       </div>
 
-      {isSignableContractType(contract.contract_type) && (
-        <Card>
+      <Card>
           <CardHeader>
             <CardTitle>Assinatura digital</CardTitle>
             <CardDescription>
@@ -595,7 +594,6 @@ export default async function ContratoDetalhePage({
               ))}
           </CardContent>
         </Card>
-      )}
 
       <Card>
         <CardHeader>

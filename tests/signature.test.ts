@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { PDFDocument } from 'pdf-lib';
-import { generateSignatureToken, isSignableContractType, parseSigners, sha256Hex } from '@/lib/signature';
+import { generateSignatureToken, parseSigners, sha256Hex } from '@/lib/signature';
 import { appendSignatureSheet } from '@/lib/signature-pdf';
 
 describe('assinatura eletrônica', () => {
@@ -59,11 +59,5 @@ describe('parseSigners', () => {
     expect(parseSigners([''], ['ana@x.com']).ok).toBe(false);
     expect(parseSigners([''], ['']).ok).toBe(false);
     expect(parseSigners(['A', 'B'], ['a@x.com', 'a@x.com']).ok).toBe(false);
-  });
-
-  it('só libera assinatura para serviço e locação', () => {
-    expect(isSignableContractType('servico')).toBe(true);
-    expect(isSignableContractType('locacao')).toBe(true);
-    expect(isSignableContractType('comodato')).toBe(false);
   });
 });

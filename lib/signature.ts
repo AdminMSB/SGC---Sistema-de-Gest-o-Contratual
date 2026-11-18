@@ -20,13 +20,6 @@ export function formatSignatureDateTime(iso: string): string {
   return SIGNATURE_DATE_FORMAT.format(new Date(iso));
 }
 
-/** Assinatura eletrônica só é oferecida para estes tipos de contrato. */
-export const SIGNABLE_CONTRACT_TYPES = ['servico', 'locacao'] as const;
-
-export function isSignableContractType(type: string): boolean {
-  return (SIGNABLE_CONTRACT_TYPES as readonly string[]).includes(type);
-}
-
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export interface SignerInput {

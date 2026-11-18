@@ -186,7 +186,7 @@ dedicado (Resend, SendGrid) trocando apenas `lib/mailer.ts`.
 
 ## Assinatura digital (eletrônica simples)
 
-Disponível na página do contrato para contratos de **serviços** e **locação** com PDF anexado. O fluxo manual / gov.br continua valendo; esta é uma opção a mais.
+Disponível na página de qualquer contrato com PDF anexado. O fluxo manual / gov.br continua valendo; esta é uma opção a mais.
 
 1. Em "Assinatura digital", informe nome e e-mail de cada signatário e clique em "Enviar para assinatura". O sistema guarda uma cópia imutável do PDF e envia um link único e pessoal para cada pessoa (mesmo e-mail Gmail dos alertas).
 2. O signatário abre o link (página pública `/assinar/<token>`, sem login), lê o PDF, digita o nome completo e confirma.

@@ -6,7 +6,7 @@ import { requireProfile } from '@/lib/auth';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { getAppBaseUrl } from '@/lib/app-url';
 import { sendSignatureInvite } from '@/lib/signature-mail';
-import { generateSignatureToken, isSignableContractType, parseSigners, sha256Hex } from '@/lib/signature';
+import { generateSignatureToken, parseSigners, sha256Hex } from '@/lib/signature';
 
 function back(contractId: string, error?: string): never {
   const base = `/contratos/${contractId}`;
@@ -26,13 +26,10 @@ export async function createSignatureRequest(formData: FormData): Promise<void> 
   const supabase = await createServerSupabaseClient();
   const { data: contract } = await supabase
     .from('contracts')
-    .select('id, title, contract_type, file_path')
+    .select('id, title, file_path')
     .eq('id', contractId)
     .single();
   if (!contract) back(contractId, 'Contrato não encontrado.');
-  if (!isSignableContractType(contract.contract_type)) {
-    back(contractId, 'Assinatura eletrônica só está disponível para contratos de serviços e locação.');
-  }
   if (!contract.file_path) back(contractId, 'Anexe o PDF do contrato antes de solicitar assinaturas.');
 
   const { data: pending } = await supabase
