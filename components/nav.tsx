@@ -16,6 +16,7 @@ const ALL_ROLES: Role[] = ['gestor', 'admin'];
 const NAV_ITEMS: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', roles: ALL_ROLES },
   { href: '/contratos', label: 'Contratos', roles: ALL_ROLES },
+  { href: '/relatorios', label: 'Relatórios', roles: ALL_ROLES },
   { href: '/configuracoes', label: 'Configurações', roles: ['admin'] },
 ];
 

@@ -206,6 +206,19 @@ Disponível na página de qualquer contrato com PDF anexado. O fluxo manual / go
 
 **Atenção:** é assinatura eletrônica *simples*. Tem validade como prova de manifestação de vontade, mas é mais fraca que certificado ICP-Brasil/gov.br; confirme com o jurídico quais contratos podem usá-la. Requer a migration `0034_signatures.sql`.
 
+## Relatórios
+
+Item **Relatórios** no menu lateral (Gestor e Administrador). Cada relatório tem filtros, aparece na tela e
+exporta em Excel (`.xlsx`) exatamente o que está na tela:
+
+- **Contratos:** filtros por fornecedor/CNPJ, situação, categoria, gestor e período de vigência; as colunas
+  são escolhidas na tela (valor, vigência, reajuste, códigos do D365, centro de custo etc.).
+- **Vencimentos e reajustes:** contratos ativos com fim de vigência ou data-base de reajuste nos próximos
+  30/60/90/180 dias, com opção de incluir os que já passaram da data.
+
+O Gestor só enxerga os dados dos contratos em que é responsável (regra do banco). Código em
+`lib/reports.ts` (filtros e regras), `lib/report-excel.ts` (planilha) e `app/(app)/relatorios`.
+
 ## Limitações conhecidas / próximos passos
 
 - Não há testes end-to-end (E2E) automatizados — a validação da interface deve ser feita
