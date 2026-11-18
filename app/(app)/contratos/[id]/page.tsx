@@ -36,6 +36,8 @@ import { signerRoleLabel, signerStep, signingRank } from '@/lib/signature-limits
 import { ContratoForm } from '../contrato-form';
 import { SignatureRequestForm } from '../signature-request-form';
 import { DocumentToggle } from '../document-toggle';
+import { FlashMessage } from '../flash-message';
+import { PendingButton } from '../pending-button';
 import { cancelSignatureRequest, resendSignatureInvite } from '../signature-actions';
 import { DocumentAddForm } from '../document-add-form';
 import { CloseContractForm } from '../close-contract-form';
@@ -141,7 +143,7 @@ export default async function ContratoDetalhePage({
   searchParams,
 }: {
   params: { id: string };
-  searchParams: { error?: string; ok?: string };
+  searchParams: { error?: string; ok?: string; sig?: string };
 }) {
   const profile = await requireProfile();
   const supabase = await createServerSupabaseClient();
@@ -261,8 +263,8 @@ export default async function ContratoDetalhePage({
         </Link>
       </div>
 
-      {searchParams.error && <p className="text-sm text-destructive">{searchParams.error}</p>}
-      {searchParams.ok && (
+      {searchParams.error && !searchParams.sig && <p className="text-sm text-destructive">{searchParams.error}</p>}
+      {searchParams.ok && !searchParams.sig && (
         <p className="rounded-md border border-green-600/30 bg-green-600/10 px-4 py-3 text-sm font-medium text-green-700">
           {searchParams.ok}
         </p>
@@ -499,7 +501,7 @@ export default async function ContratoDetalhePage({
       )}
       </div>
 
-      <Card>
+      <Card id="assinatura-digital">
           <CardHeader>
             <CardTitle>Assinatura digital</CardTitle>
             <CardDescription>
@@ -509,6 +511,8 @@ export default async function ContratoDetalhePage({
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-6">
+            {searchParams.sig && searchParams.error && <FlashMessage tone="error" message={searchParams.error} />}
+            {searchParams.sig && searchParams.ok && <FlashMessage tone="success" message={searchParams.ok} />}
             {signatureList.map((request) => {
               const signers = (signatureSigners ?? [])
                 .filter((signer) => signer.request_id === request.id)
@@ -583,9 +587,7 @@ export default async function ContratoDetalhePage({
                               <form action={resendSignatureInvite}>
                                 <input type="hidden" name="contractId" value={contract.id} />
                                 <input type="hidden" name="signerId" value={signer.id} />
-                                <Button type="submit" variant="secondary" size="sm">
-                                  Reenviar
-                                </Button>
+                                <PendingButton label="Reenviar" pendingLabel="Enviando…" variant="secondary" size="sm" />
                               </form>
                             )}
                           </TableCell>

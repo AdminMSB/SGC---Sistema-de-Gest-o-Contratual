@@ -11,8 +11,9 @@ import { currentTurnSigners, generateSignatureToken, parseSigners, sha256Hex } f
 
 function back(contractId: string, error?: string, notice?: string): never {
   const base = `/contratos/${contractId}`;
-  if (error) redirect(`${base}?error=${encodeURIComponent(error)}`);
-  redirect(notice ? `${base}?ok=${encodeURIComponent(notice)}` : base);
+  // `sig=1` faz a página mostrar a mensagem dentro do card de assinatura, onde fica o botão clicado.
+  if (error) redirect(`${base}?sig=1&error=${encodeURIComponent(error)}`);
+  redirect(notice ? `${base}?sig=1&ok=${encodeURIComponent(notice)}` : base);
 }
 
 /** Cria a solicitação: guarda uma cópia imutável do PDF, gera um link por signatário e envia os e-mails. */
