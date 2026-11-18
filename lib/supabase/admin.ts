@@ -15,6 +15,11 @@ export function createAdminSupabaseClient() {
         autoRefreshToken: false,
         persistSession: false,
       },
+      // O Next.js guarda em cache as respostas de fetch(); sem isto a página pública de assinatura
+      // continuava lendo o estado antigo do signatário mesmo depois de assinar.
+      global: {
+        fetch: (input, init) => fetch(input, { ...init, cache: 'no-store' }),
+      },
     },
   );
 }
