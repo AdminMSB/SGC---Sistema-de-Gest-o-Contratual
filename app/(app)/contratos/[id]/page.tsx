@@ -31,8 +31,8 @@ import {
   type ContractDetailType,
   type Department,
 } from '@/types/domain';
-import { formatSignatureDateTime } from '@/lib/signature';
-import { signerRoleLabel } from '@/lib/signature-limits';
+import { currentTurnSigners, formatSignatureDateTime } from '@/lib/signature';
+import { signerRoleLabel, signerStep, signingRank } from '@/lib/signature-limits';
 import { ContratoForm } from '../contrato-form';
 import { SignatureRequestForm } from '../signature-request-form';
 import { DocumentToggle } from '../document-toggle';
@@ -141,7 +141,7 @@ export default async function ContratoDetalhePage({
   searchParams,
 }: {
   params: { id: string };
-  searchParams: { error?: string };
+  searchParams: { error?: string; ok?: string };
 }) {
   const profile = await requireProfile();
   const supabase = await createServerSupabaseClient();
@@ -262,6 +262,11 @@ export default async function ContratoDetalhePage({
       </div>
 
       {searchParams.error && <p className="text-sm text-destructive">{searchParams.error}</p>}
+      {searchParams.ok && (
+        <p className="rounded-md border border-green-600/30 bg-green-600/10 px-4 py-3 text-sm font-medium text-green-700">
+          {searchParams.ok}
+        </p>
+      )}
 
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
@@ -507,7 +512,8 @@ export default async function ContratoDetalhePage({
             {signatureList.map((request) => {
               const signers = (signatureSigners ?? [])
                 .filter((signer) => signer.request_id === request.id)
-                .sort((a, b) => a.created_at.localeCompare(b.created_at));
+                .sort((a, b) => signerStep(a.role) - signerStep(b.role) || a.created_at.localeCompare(b.created_at));
+              const turnIds = new Set(currentTurnSigners(signers).map((signer) => signer.id));
               const signedUrl = signedDocumentUrls.get(request.id);
               return (
                 <div key={request.id} className="flex flex-col gap-3">
@@ -548,6 +554,7 @@ export default async function ContratoDetalhePage({
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead>Etapa</TableHead>
                         <TableHead>Signatário</TableHead>
                         <TableHead>Papel</TableHead>
                         <TableHead>E-mail</TableHead>
@@ -558,18 +565,21 @@ export default async function ContratoDetalhePage({
                     <TableBody>
                       {signers.map((signer) => (
                         <TableRow key={signer.id}>
+                          <TableCell>{signingRank(signers.map((item) => item.role), signer.role)}ª</TableCell>
                           <TableCell>{signer.name}</TableCell>
                           <TableCell>{signerRoleLabel(signer.role) ?? '—'}</TableCell>
                           <TableCell>{signer.email}</TableCell>
                           <TableCell>
                             {signer.signed_at ? (
                               <Badge tone="success">Assinou em {formatSignatureDateTime(signer.signed_at)}</Badge>
+                            ) : request.status === 'pendente' && !turnIds.has(signer.id) ? (
+                              <Badge tone="neutral">Aguarda etapa anterior</Badge>
                             ) : (
-                              <Badge tone="neutral">Pendente</Badge>
+                              <Badge tone="warning">Aguardando assinatura</Badge>
                             )}
                           </TableCell>
                           <TableCell>
-                            {request.status === 'pendente' && !signer.signed_at && (
+                            {request.status === 'pendente' && turnIds.has(signer.id) && (
                               <form action={resendSignatureInvite}>
                                 <input type="hidden" name="contractId" value={contract.id} />
                                 <input type="hidden" name="signerId" value={signer.id} />

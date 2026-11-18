@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { PDFDocument } from 'pdf-lib';
-import { generateSignatureToken, parseSigners, sha256Hex } from '@/lib/signature';
+import { currentTurnSigners, generateSignatureToken, parseSigners, sha256Hex } from '@/lib/signature';
+import { signingRank } from '@/lib/signature-limits';
 import { appendSignatureSheet } from '@/lib/signature-pdf';
 
 describe('assinatura eletrônica', () => {
@@ -53,6 +54,30 @@ describe('assinatura eletrônica', () => {
       signers: [],
     });
     expect((await PDFDocument.load(signed)).getPageCount()).toBe(1);
+  });
+});
+
+describe('ordem de assinatura', () => {
+  const signers = [
+    { id: 'a', role: 'testemunha', signed_at: null },
+    { id: 'b', role: 'contratada', signed_at: null },
+    { id: 'c', role: 'contratante', signed_at: '2026-01-01T00:00:00Z' },
+    { id: 'd', role: 'testemunha', signed_at: null },
+  ];
+
+  it('libera só a etapa mais antiga ainda incompleta', () => {
+    expect(currentTurnSigners(signers).map((signer) => signer.id)).toEqual(['b']);
+  });
+
+  it('libera todos os da mesma etapa ao mesmo tempo e ninguém quando todos assinaram', () => {
+    const afterB = signers.map((signer) => (signer.id === 'b' ? { ...signer, signed_at: 'x' } : signer));
+    expect(currentTurnSigners(afterB).map((signer) => signer.id)).toEqual(['a', 'd']);
+    expect(currentTurnSigners(afterB.map((signer) => ({ ...signer, signed_at: 'x' })))).toEqual([]);
+  });
+
+  it('numera as etapas sem buracos', () => {
+    const roles = ['testemunha', 'contratada', 'contratante', 'testemunha'];
+    expect(roles.map((role) => signingRank(roles, role))).toEqual([3, 2, 1, 3]);
   });
 });
 

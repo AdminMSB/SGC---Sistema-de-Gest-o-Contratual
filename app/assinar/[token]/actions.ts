@@ -4,9 +4,10 @@ import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { createAdminSupabaseClient } from '@/lib/supabase/admin';
 import { appendSignatureSheet } from '@/lib/signature-pdf';
-import { sendSignedCopy } from '@/lib/signature-mail';
-import { sha256Hex } from '@/lib/signature';
-import { signerRoleLabel } from '@/lib/signature-limits';
+import { getAppBaseUrl } from '@/lib/app-url';
+import { sendSignatureInvite, sendSignedCopy } from '@/lib/signature-mail';
+import { currentTurnSigners, sha256Hex } from '@/lib/signature';
+import { signerRoleLabel, signerStep } from '@/lib/signature-limits';
 
 function backToSigning(token: string, error?: string): never {
   const base = `/assinar/${token}`;
@@ -27,7 +28,7 @@ export async function signDocument(formData: FormData): Promise<void> {
   const admin = createAdminSupabaseClient();
   const { data: signer } = await admin
     .from('signature_signers')
-    .select('id, request_id, signed_at')
+    .select('id, request_id, role, signed_at')
     .eq('token', token)
     .single();
   if (!signer || signer.signed_at) backToSigning(token);
@@ -38,6 +39,15 @@ export async function signDocument(formData: FormData): Promise<void> {
     .eq('id', signer.request_id)
     .single();
   if (!request || request.status !== 'pendente') backToSigning(token);
+
+  // A assinatura segue a ordem dos papéis: só assina quem está na etapa liberada.
+  const { data: siblings } = await admin
+    .from('signature_signers')
+    .select('id, role, signed_at')
+    .eq('request_id', request.id);
+  if (!currentTurnSigners(siblings ?? []).some((sibling) => sibling.id === signer.id)) {
+    backToSigning(token, 'Ainda não é a sua vez de assinar. Aguarde as assinaturas anteriores.');
+  }
 
   // Confere que o documento guardado ainda é exatamente o que foi enviado para assinatura.
   const { data: original } = await admin.storage.from('contracts').download(request.document_path);
@@ -67,16 +77,46 @@ export async function signDocument(formData: FormData): Promise<void> {
 
   const { data: allSigners } = await admin
     .from('signature_signers')
-    .select('name, email, role, signed_at, signed_name, signed_ip')
+    .select('id, name, email, role, token, email_sent_at, signed_at, signed_name, signed_ip')
     .eq('request_id', request.id)
     .order('created_at');
   const everyoneSigned = (allSigners ?? []).length > 0 && (allSigners ?? []).every((row) => row.signed_at);
 
   if (everyoneSigned) {
-    await finalizeRequest(request, allSigners ?? [], originalBytes);
+    const inOrder = [...(allSigners ?? [])].sort((a, b) => signerStep(a.role) - signerStep(b.role));
+    await finalizeRequest(request, inOrder, originalBytes);
+  } else {
+    await inviteNextSigners(request.contract_id, allSigners ?? []);
   }
 
   backToSigning(token);
+}
+
+/** Quando uma etapa fecha, envia o link à etapa seguinte (quem ainda não recebeu). */
+async function inviteNextSigners(
+  contractId: string,
+  signers: { id: string; name: string; email: string; role: string | null; token: string; email_sent_at: string | null; signed_at: string | null }[],
+) {
+  const admin = createAdminSupabaseClient();
+  const next = currentTurnSigners(signers).filter((signer) => !signer.email_sent_at);
+  if (next.length === 0) return;
+
+  const { data: contract } = await admin.from('contracts').select('title').eq('id', contractId).single();
+  const baseUrl = getAppBaseUrl();
+  for (const signer of next) {
+    try {
+      await sendSignatureInvite({
+        to: signer.email,
+        signerName: signer.name,
+        contractTitle: contract?.title ?? 'Contrato',
+        roleLabel: signerRoleLabel(signer.role),
+        link: `${baseUrl}/assinar/${signer.token}`,
+      });
+      await admin.from('signature_signers').update({ email_sent_at: new Date().toISOString() }).eq('id', signer.id);
+    } catch {
+      // Sem e-mail, o remetente ainda pode usar "Reenviar" no card do contrato.
+    }
+  }
 }
 
 async function finalizeRequest(

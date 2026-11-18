@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from 'node:crypto';
-import { MAX_SIGNERS, SIGNER_ROLES, type SignerRole } from './signature-limits';
+import { MAX_SIGNERS, SIGNER_ROLES, signerStep, type SignerRole } from './signature-limits';
 
 export function sha256Hex(bytes: Uint8Array): string {
   return createHash('sha256').update(bytes).digest('hex');
@@ -54,6 +54,19 @@ export function parseSigners(
     return { ok: false, error: 'Há e-mails repetidos entre os signatários.' };
   }
   return { ok: true, signers };
+}
+
+/**
+ * Quem pode assinar agora: os pendentes da etapa mais antiga ainda incompleta. As etapas seguem
+ * a ordem dos papéis (ver SIGNER_ROLES); os demais esperam todos os de etapas anteriores.
+ */
+export function currentTurnSigners<T extends { role: string | null; signed_at: string | null }>(
+  signers: T[],
+): T[] {
+  const pending = signers.filter((signer) => !signer.signed_at);
+  if (pending.length === 0) return [];
+  const step = Math.min(...pending.map((signer) => signerStep(signer.role)));
+  return pending.filter((signer) => signerStep(signer.role) === step);
 }
 
 export function escapeHtml(text: string): string {

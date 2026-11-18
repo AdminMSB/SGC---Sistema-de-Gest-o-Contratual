@@ -191,7 +191,8 @@ Disponível na página de qualquer contrato com PDF anexado. O fluxo manual / go
 1. Em "Assinatura digital", informe nome e e-mail de cada signatário e clique em "Enviar para assinatura". O sistema guarda uma cópia imutável do PDF e envia um link único e pessoal para cada pessoa (mesmo e-mail Gmail dos alertas).
 2. O signatário abre o link (página pública `/assinar/<token>`, sem login), lê o PDF, digita o nome completo e confirma.
 3. São registrados data/hora, IP, navegador e o hash SHA-256 do documento. Quando todos assinam, o sistema gera o PDF final com uma "Folha de assinaturas" ao fim, guarda no contrato ("Baixar PDF assinado") e envia a cópia por e-mail a todos.
-4. Dá para reenviar o link de quem ainda não assinou ou cancelar a solicitação (os links deixam de funcionar).
+4. **Ordem de assinatura:** segue a ordem dos papéis (Contratante → Contratada → Representante legal → Avalista/Fiador → Interveniente/Anuente → Testemunha → Outro). Quem tem o mesmo papel assina ao mesmo tempo; cada etapa só recebe o link por e-mail quando a anterior termina. Antes de assinar e antes de enviar, o sistema pede confirmação com data e hora. O PDF assinado também é arquivado na lista de documentos do contrato.
+5. Dá para reenviar o link de quem ainda não assinou ou cancelar a solicitação (os links deixam de funcionar).
 
 **Atenção:** é assinatura eletrônica *simples*. Tem validade como prova de manifestação de vontade, mas é mais fraca que certificado ICP-Brasil/gov.br; confirme com o jurídico quais contratos podem usá-la. Requer a migration `0034_signatures.sql`.
 

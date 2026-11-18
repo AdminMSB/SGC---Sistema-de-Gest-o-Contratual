@@ -7,11 +7,12 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { getAppBaseUrl } from '@/lib/app-url';
 import { sendSignatureInvite } from '@/lib/signature-mail';
 import { signerRoleLabel } from '@/lib/signature-limits';
-import { generateSignatureToken, parseSigners, sha256Hex } from '@/lib/signature';
+import { currentTurnSigners, generateSignatureToken, parseSigners, sha256Hex } from '@/lib/signature';
 
-function back(contractId: string, error?: string): never {
+function back(contractId: string, error?: string, notice?: string): never {
   const base = `/contratos/${contractId}`;
-  redirect(error ? `${base}?error=${encodeURIComponent(error)}` : base);
+  if (error) redirect(`${base}?error=${encodeURIComponent(error)}`);
+  redirect(notice ? `${base}?ok=${encodeURIComponent(notice)}` : base);
 }
 
 /** Cria a solicitação: guarda uma cópia imutável do PDF, gera um link por signatário e envia os e-mails. */
@@ -81,7 +82,9 @@ export async function createSignatureRequest(formData: FormData): Promise<void> 
 
   const baseUrl = getAppBaseUrl();
   const failures: string[] = [];
-  for (const signer of signers) {
+  // Só a primeira etapa (pela ordem dos papéis) recebe o link agora; as demais recebem quando chegar a vez.
+  const firstTurn = currentTurnSigners(signers.map((signer) => ({ ...signer, signed_at: null as string | null })));
+  for (const signer of firstTurn) {
     try {
       await sendSignatureInvite({
         to: signer.email,
@@ -100,11 +103,16 @@ export async function createSignatureRequest(formData: FormData): Promise<void> 
   }
 
   revalidatePath(`/contratos/${contractId}`);
+  if (failures.length > 0) {
+    back(contractId, `Solicitação criada, mas o e-mail não foi enviado para: ${failures.join(', ')}. Use "Reenviar".`);
+  }
+  const waiting = signers.length - firstTurn.length;
   back(
     contractId,
-    failures.length > 0
-      ? `Solicitação criada, mas o e-mail não foi enviado para: ${failures.join(', ')}. Use "Reenviar".`
-      : undefined,
+    undefined,
+    `Solicitação enviada: o link foi enviado por e-mail para ${firstTurn.map((signer) => signer.name).join(', ')}.${
+      waiting > 0 ? ` Os demais ${waiting} signatário(s) recebem o link quando chegar a vez, seguindo a ordem dos papéis.` : ''
+    }`,
   );
 }
 
@@ -129,6 +137,13 @@ export async function resendSignatureInvite(formData: FormData): Promise<void> {
   if (!request || request.status !== 'pendente' || request.contract_id !== contractId) {
     back(contractId, 'A solicitação não está mais em andamento.');
   }
+  const { data: siblings } = await supabase
+    .from('signature_signers')
+    .select('id, role, signed_at')
+    .eq('request_id', signer.request_id);
+  if (!currentTurnSigners(siblings ?? []).some((sibling) => sibling.id === signer.id)) {
+    back(contractId, 'Este signatário só recebe o link depois que as etapas anteriores assinarem.');
+  }
   const { data: contract } = await supabase.from('contracts').select('title').eq('id', contractId).single();
 
   try {
@@ -148,7 +163,7 @@ export async function resendSignatureInvite(formData: FormData): Promise<void> {
   }
 
   revalidatePath(`/contratos/${contractId}`);
-  back(contractId);
+  back(contractId, undefined, `Link reenviado para ${signer.email}.`);
 }
 
 export async function cancelSignatureRequest(formData: FormData): Promise<void> {
@@ -166,5 +181,5 @@ export async function cancelSignatureRequest(formData: FormData): Promise<void> 
   if (error || !data || data.length === 0) back(contractId, 'Não foi possível cancelar a solicitação.');
 
   revalidatePath(`/contratos/${contractId}`);
-  back(contractId);
+  back(contractId, undefined, 'Solicitação de assinatura cancelada.');
 }

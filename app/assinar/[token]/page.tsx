@@ -1,11 +1,8 @@
 import { createAdminSupabaseClient } from '@/lib/supabase/admin';
-import { formatSignatureDateTime } from '@/lib/signature';
+import { currentTurnSigners, formatSignatureDateTime } from '@/lib/signature';
 import { signerRoleLabel } from '@/lib/signature-limits';
+import { SignForm } from './sign-form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { signDocument } from './actions';
-import { SignButton } from './sign-button';
 
 export const dynamic = 'force-dynamic';
 
@@ -71,6 +68,20 @@ export default async function AssinarPage({
     return <Notice title="Solicitação encerrada">Este documento já foi finalizado.</Notice>;
   }
 
+  const { data: siblings } = await admin
+    .from('signature_signers')
+    .select('id, name, role, signed_at')
+    .eq('request_id', request.id);
+  const turn = currentTurnSigners(siblings ?? []);
+  if (!turn.some((sibling) => sibling.id === signer.id)) {
+    return (
+      <Notice title="Aguardando as assinaturas anteriores">
+        {signer.name}, a assinatura segue uma ordem. Você receberá um novo e-mail com o link quando chegar a sua vez.
+        Aguardando: {turn.map((sibling) => `${sibling.name}${signerRoleLabel(sibling.role) ? ` (${signerRoleLabel(sibling.role)})` : ''}`).join(', ')}.
+      </Notice>
+    );
+  }
+
   const { data: signed } = await admin.storage.from('contracts').createSignedUrl(request.document_path, 60 * 60);
 
   return (
@@ -108,20 +119,7 @@ export default async function AssinarPage({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form action={signDocument} className="flex max-w-lg flex-col gap-4">
-            <input type="hidden" name="token" value={params.token} />
-            <div>
-              <Label htmlFor="signedName">Digite seu nome completo</Label>
-              <Input id="signedName" name="signedName" required minLength={3} autoComplete="name" />
-            </div>
-            <label className="flex items-start gap-2 text-sm">
-              <input type="checkbox" name="accept" required className="mt-0.5" />
-              <span>Li o documento e concordo com o seu conteúdo. Declaro que esta é a minha assinatura.</span>
-            </label>
-            <div>
-              <SignButton />
-            </div>
-          </form>
+          <SignForm token={params.token} documentTitle={title} roleLabel={signerRoleLabel(signer.role)} />
         </CardContent>
       </Card>
     </div>
