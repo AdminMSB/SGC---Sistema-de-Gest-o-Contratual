@@ -112,6 +112,8 @@ async function finalizeRequest(
     .update({ status: 'concluida', signed_document_path: signedPath, completed_at: new Date().toISOString() })
     .eq('id', request.id);
 
+  await archiveSignedDocument(request.contract_id, finalPdf);
+
   const recipients = new Set(signers.map((row) => row.email));
   if (request.created_by) {
     const { data: creator } = await admin.auth.admin.getUserById(request.created_by);
@@ -122,4 +124,32 @@ async function finalizeRequest(
   } catch {
     // O PDF final já está guardado e disponível no contrato; falha de e-mail não desfaz a assinatura.
   }
+}
+
+/**
+ * Arquiva o PDF assinado na lista de documentos do contrato. Usa uma cópia própria do arquivo
+ * (mesma convenção de caminho dos anexos) para que excluir o documento não afete o card de assinatura.
+ */
+async function archiveSignedDocument(contractId: string, pdf: Uint8Array) {
+  const admin = createAdminSupabaseClient();
+  const today = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo' }).format(new Date());
+
+  const { data: document } = await admin
+    .from('contract_documents')
+    .insert({
+      contract_id: contractId,
+      document_type: 'outro',
+      label: `Contrato assinado digitalmente (${today})`,
+    })
+    .select('id')
+    .single();
+  if (!document) return;
+
+  const path = `${contractId}/documentos/${document.id}.pdf`;
+  const { error } = await admin.storage.from('contracts').upload(path, pdf, { contentType: 'application/pdf' });
+  if (error) {
+    await admin.from('contract_documents').delete().eq('id', document.id);
+    return;
+  }
+  await admin.from('contract_documents').update({ file_path: path }).eq('id', document.id);
 }
